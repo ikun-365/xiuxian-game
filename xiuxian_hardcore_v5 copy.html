@@ -1,0 +1,1244 @@
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>修仙界</title>
+    <style>
+    :root{--bg:#0b1020;--panel:#151e33;--panel2:#202c46;--gold:#f3cf7a;--text:#edf2ff;--muted:#aebbd3;--green:#75dfac;--red:#ff8f99;--blue:#8fc8ff}
+    *{box-sizing:border-box}
+    body{margin:0;padding:16px;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif}
+    main{max-width:850px;margin:auto}
+    h1,h2,h3{color:var(--gold)}h1{text-align:center}p{line-height:1.6}
+    .panel{background:var(--panel);border:1px solid #34425f;border-radius:14px;padding:15px;margin:13px 0}
+    .row{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+    button,input,select{font:inherit;border-radius:9px;padding:10px}
+    button{background:#34496e;color:white;border:0;cursor:pointer}
+    button:hover:not(:disabled){filter:brightness(1.18)}
+    button:disabled{opacity:.4;cursor:not-allowed}
+    input,select{background:#0d1528;color:white;border:1px solid #526483;max-width:100%}
+    input{width:100%;margin:6px 0 12px}
+    label{display:block;margin-top:8px;color:var(--muted)}
+    .small{font-size:13px;color:var(--muted)}.gold{color:var(--gold)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}
+    .hidden{display:none!important}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+    .stat{background:var(--panel2);padding:11px;border-radius:10px;min-width:0}
+    .stat strong{display:block;margin-top:5px;color:var(--gold)}
+    .dungeon-map{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:12px 0}.map-node{border:1px solid #394968;border-radius:10px;padding:9px 2px;text-align:center;font-size:12px;background:#111a2d;color:#aab8d2}.map-node.done{background:#183c38;border-color:#3c9c83;color:#b8ffe7}.map-node.current{background:#3a2d61;border-color:#a58bff;color:#fff}.map-node.boss{border-color:#a84e57;color:#ffb9c0}.logitem{padding:9px 0;border-bottom:1px solid #34425f;line-height:1.6}.logitem:last-child{border-bottom:0}
+    .badge{display:inline-block;background:#30405d;border-radius:20px;padding:3px 8px;font-size:12px;margin:3px}
+    .hpbar,.mpbar{height:12px;background:#39445a;border-radius:12px;overflow:hidden}
+    .hpfill,.mpfill{height:100%;transition:width .35s ease}.hpfill{background:var(--green)}.mpfill{background:var(--blue)}
+    .fighter{background:#101a2d;border-radius:12px;padding:12px;border:1px solid #34425f;min-width:0}
+    .fighter.hit{animation:hit .35s ease}.fighter.skill{animation:skill .55s ease}.fighter.guard{animation:guard .45s ease}
+    @keyframes hit{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}60%{transform:translateX(5px)}}
+    @keyframes skill{0%{box-shadow:0 0 0 #8fc8ff}50%{box-shadow:0 0 24px #8fc8ff}100%{box-shadow:0 0 0 #8fc8ff}}
+    @keyframes guard{0%,100%{box-shadow:0 0 0 #75dfac}50%{box-shadow:0 0 18px #75dfac}}
+    .actionbtn{flex:1 1 120px;min-height:48px}
+    #battleLog{max-height:250px;overflow:auto;background:#0d1528}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin:24px 0}
+    </style>
+    </head>
+    <body>
+    <main>
+    <h1>☁️ 修仙界</h1>
+    <p style="text-align:center;color:var(--muted)">修道问心，斗法争先。</p>
+
+    <section id="welcome" class="panel">
+      <h2>欢迎来到修仙界</h2><p>创建角色，抽取灵根，踏上修仙之路。</p>
+      <div class="row"><button onclick="showPage('register')">创建角色</button><button onclick="showPage('login')">已有角色登录</button></div>
+    </section>
+
+    <section id="register" class="panel hidden">
+      <h2>创建修仙角色</h2>
+      <label>角色昵称（2–16 个字符）</label><input id="regName" maxlength="16" placeholder="输入游戏昵称">
+      <label>游戏口令（至少 6 个字符）</label><input id="regPass" type="password" placeholder="仅用于这个游戏">
+      <p class="small">本地测试版，请勿使用真实账号密码。</p>
+      <div class="row"><button onclick="register()">抽取灵根并创建</button><button onclick="showPage('welcome')">返回</button></div>
+      <p id="regMessage"></p>
+    </section>
+
+    <section id="login" class="panel hidden">
+      <h2>角色登录</h2>
+      <label>角色昵称</label><input id="loginName" maxlength="16" placeholder="输入角色昵称">
+      <label>游戏口令</label><input id="loginPass" type="password" placeholder="输入游戏口令">
+      <div class="row"><button onclick="login()">登录</button><button onclick="showPage('welcome')">返回</button></div>
+      <p id="loginMessage"></p>
+    </section>
+
+    <section id="game" class="hidden">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between"><h2 id="playerTitle">我的角色</h2><button onclick="logout()">退出登录</button></div>
+        <div class="grid">
+          <div class="stat">境界<strong id="rankText">—</strong></div>
+          <div class="stat">灵根<strong id="rootText">—</strong></div>
+          <div class="stat">修为<strong id="expText">—</strong></div>
+          <div class="stat">下品灵石<strong id="stoneText">—</strong></div>
+          <div class="stat">当前功法<strong id="techText">—</strong></div>
+          <div class="stat">装备武器<strong id="weaponText">—</strong></div>
+          <div class="stat">灵气<strong id="qiText">—</strong></div>
+        </div><p id="rankProgress" class="small"></p>
+        <div class="stat">
+    <strong>🎒 我的背包</strong>
+    <div id="inventoryText" class="small">背包暂时为空</div>
+  </div>
+      </div>
+
+      <div class="panel">
+        <h2>🧘 修炼系统</h2><p id="cultivateStatus"></p>
+        <div class="row"><button id="cultivateBtn" onclick="cultivate()">每日修炼</button><button onclick="breakthrough()">尝试突破</button></div>
+        <p id="cultivateMessage"></p>
+      </div>
+
+    <div class="panel">
+      <h2>🌿 每日签到与修炼次数</h2>
+      <p id="dailyInfo" class="small"></p>
+      <div class="row">
+        <button onclick="dailyCheckin()">每日签到</button>
+        <button onclick="usePillOutside('悟道丹')">使用悟道丹</button>
+      </div>
+      <p id="dailyMessage" class="small"></p>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 丹药与炼丹</h2>
+      <p class="small">聚灵丹恢复灵气，回春丹恢复气血，护脉丹和筑基丹提高突破成功率，悟道丹增加修炼次数。</p>
+      <div id="alchemyInventory"></div>
+      <h3>炼丹配方</h3>
+      <div id="alchemyRecipes"></div>
+      <p id="alchemyMessage" class="small"></p>
+    </div> <div class="panel">
+        <h2>📚 功法系统</h2><p class="small">学习功法需要消耗灵石；已学会的功法可以免费切换。</p>
+        <div id="techniqueList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>🗡️ 武器商店</h2><p class="small">购买武器会自动装备；已拥有的武器可以免费切换。武器加成会影响切磋伤害。</p>
+        <div id="weaponShop"></div><p id="weaponMessage" class="small"></p>
+      </div>
+      <div class="panel">
+        <h2>🧭 修仙世界</h2>
+        <div class="grid"><div class="stat">宗门<strong id="sectText">暂无宗门</strong></div><div class="stat">秘境记录<strong id="dungeonText">尚无记录</strong></div></div>
+        <p class="small">秘境每日可挑战各副本一次。胜利可获得修为、灵石和随机材料/丹药；失败不会扣除灵石。</p>
+        <h3>🌲 秘境探索</h3><p class="small">探索包含七个区域、分支路线、隐藏密室与最终 Boss。越深入危险越高；击败核心守护者可获得额外战利品，也可以随时撤离保住暂存收获。</p><div id="dungeonList"></div><div id="dungeonMessage" class="stat" aria-live="polite">选择一个秘境开始探索。</div><div id="dungeonAdventurePanel" class="panel hidden"><h3 id="dungeonAdventureTitle">秘境探索中</h3><p id="dungeonAdventureStatus"></p><div id="dungeonMap" class="dungeon-map"></div><div id="dungeonAdventureLog" class="logitem"></div><div id="dungeonPathChoices" class="row"></div><div id="dungeonAdventureActions" class="row"></div></div>
+      </div>
+      <div class="panel">
+        <h2>⚔️ 回合制切磋</h2><p>每次行动后，对手都会作出反应。灵力有限，选择攻击、防御、恢复或功法技能。</p>
+        <label>选择对手</label><select id="opponentSelect" style="width:100%;margin:8px 0"></select>
+        <button onclick="startBattle()">开始切磋</button>
+        <div id="battleArea" class="hidden">
+          <hr style="border-color:#34425f;margin:18px 0"><h3 id="battleTitle">战斗中</h3>
+          <p id="turnText" class="gold">等待行动</p>
+          <div class="grid">
+            <div id="myFighter" class="fighter">
+              <strong id="myBattleName">我方</strong><p id="myHpText">气血：—</p>
+              <div class="hpbar"><div id="myHpBar" class="hpfill" style="width:100%"></div></div>
+              <p id="myMpText">灵力：—</p><div class="mpbar"><div id="myMpBar" class="mpfill" style="width:100%"></div></div>
+              <p id="myStats" class="small"></p><div id="myStatus" class="small"></div>
+            </div>
+            <div id="enemyFighter" class="fighter">
+              <strong id="enemyBattleName">对手</strong><p id="enemyHpText">气血：—</p>
+              <div class="hpbar"><div id="enemyHpBar" class="hpfill" style="width:100%"></div></div>
+              <p id="enemyMpText">灵力：—</p><div class="mpbar"><div id="enemyMpBar" class="mpfill" style="width:100%"></div></div>
+              <p id="enemyStats" class="small"></p><div id="enemyStatus" class="small"></div>
+            </div>
+          </div>
+          <div id="battleButtons" class="panel">
+            <p class="gold">选择本回合行动</p>
+            <div class="row">
+              <button class="actionbtn" onclick="battleAction('attack')">⚔️ 普通攻击</button>
+              <button class="actionbtn" onclick="battleAction('meditate')">💠 运转灵力</button>
+              <button class="actionbtn" onclick="battleAction('defend')">🛡️ 防御</button>
+              <button id="skillBtn" class="actionbtn" onclick="battleAction('skill')">✨ 功法技能</button><button class="actionbtn" onclick="battleUseMedicine('聚灵丹')">
+      💠 聚灵丹
+    </button>
+
+    <button class="actionbtn" onclick="battleUseMedicine('回春丹')">
+      🌿 回春丹
+    </button>
+            </div><p id="skillHint" class="small"></p>
+          </div>
+          <div id="battleLog" class="panel"></div><p id="battleResult"></p>
+          <button id="newBattleBtn" class="hidden" onclick="resetBattle()">再战一场</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>📜 战斗记录</h2><p class="small">保存最近 20 场记录。战斗结束后自动结算。</p>
+        <div id="battleHistory"></div><button onclick="renderHistory()">刷新记录</button>
+      </div>
+    </section>
+    <footer>《修仙界》本地测试版 · 角色数据保存在当前浏览器</footer>
+    </main>
+
+    <script>
+    "use strict";
+    const STORAGE_KEY="xiuxian_demo_accounts_v2";
+    const ROOTS=[
+    {min:1,max:30,name:"五行杂灵根"},{min:31,max:55,name:"四灵根"},
+    {min:56,max:75,name:"三灵根"},{min:76,max:88,name:"双灵根"},
+    {min:89,max:95,name:"单灵根"},{min:96,max:98,name:"变异灵根"},
+    {min:99,max:99,name:"天灵根"},{min:100,max:100,name:"混沌灵根"}
+    ];
+    const WEAPONS=[
+    {name:"木剑",cost:0,bonus:0,desc:"入门木剑，朴素耐用。"},
+    {name:"铁剑",cost:80,bonus:5,desc:"普通铁剑，攻击力 +5。"},
+    {name:"青锋剑",cost:200,bonus:12,desc:"锋锐长剑，攻击力 +12。"}
+    ];
+    const TECHNIQUES=[
+    {id:"basic",name:"基础吐纳诀",cost:0,minRank:0,bonus:0,attack:0,defense:0,skill:"吐纳冲击",skillCost:12,mult:1.25,effect:"普通灵力冲击。"},
+    {id:"wood",name:"青木长生诀",cost:60,minRank:0,bonus:5,attack:2,defense:8,skill:"青木回春",skillCost:16,mult:1,effect:"造成伤害并恢复少量气血。"},
+    {id:"fire",name:"赤炎诀",cost:80,minRank:0,bonus:8,attack:12,defense:0,skill:"赤炎爆",skillCost:20,mult:1.8,effect:"高伤害火焰攻击。"},
+    {id:"sword",name:"青锋剑诀",cost:100,minRank:0,bonus:10,attack:16,defense:0,skill:"青锋斩",skillCost:18,mult:1.65,effect:"强力剑气攻击。"},
+    {id:"moon",name:"寒月心经",cost:180,minRank:13,bonus:15,attack:5,defense:15,skill:"寒月封脉",skillCost:18,mult:1.35,effect:"攻击并削弱对手下一次攻击。"},
+    {id:"heaven",name:"九霄化灵诀",cost:350,minRank:17,bonus:25,attack:20,defense:10,skill:"九霄化灵击",skillCost:24,mult:2,effect:"高消耗的强力灵力攻击。"}
+    ];
+    const RANKS=[];
+    for(let i=1;i<=13;i++)RANKS.push("炼气"+chineseNumber(i)+"层");
+    ["筑基","金丹","元婴","化神","炼虚","合道","大乘","渡劫","真仙","金仙","仙君","仙尊","仙帝"].forEach(n=>["初期","中期","后期","圆满"].forEach(s=>RANKS.push(n+s)));
+    function chineseNumber(n){return ["","一","二","三","四","五","六","七","八","九","十","十一","十二","十三"][n]||String(n)}
+    function rankName(i){return RANKS[Math.max(0,Math.min(i,RANKS.length-1))]}
+    function expNeeded(i){
+    // 新版修炼曲线：每个小境界都需要更长时间，跨大境界明显增加
+    const old=i<13?20+i*5:100+Math.floor((i-13)/4)*60+((i-13)%4)*25;
+    return Math.round(old*3.2 + Math.pow(Math.max(0,i),1.55)*2);
+    }
+    const ROOT_MULTIPLIERS={
+    "五行杂灵根":0.55,"四灵根":0.70,"三灵根":0.85,"双灵根":1.05,
+    "单灵根":1.30,"变异灵根":1.55,"天灵根":1.90,"混沌灵根":2.30
+    };
+    const ROOT_ORDER=["五行杂灵根","四灵根","三灵根","双灵根","单灵根","变异灵根","天灵根","混沌灵根"];
+    function rootMultiplier(p){return ROOT_MULTIPLIERS[p.root]||0.55}
+    function improveRoot(p){
+    const i=ROOT_ORDER.indexOf(p.root||"五行杂灵根");
+    if(i<0||i>=ROOT_ORDER.length-1)return false;
+    p.root=ROOT_ORDER[i+1];p.aptitudeTreasures=(Number(p.aptitudeTreasures)||0)+1;
+    return true;
+    }
+    function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+    function nowText(){return new Date().toLocaleString("zh-CN")}
+    function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+    function loadAccounts(){
+    const out={};
+    function normalize(source){
+      const entries=Array.isArray(source)?source.map(a=>[a.nickname||a.name||a.username,a]):Object.entries(source||{});
+      for(const [key,old] of entries){
+      if(!old||typeof old!=="object")continue;
+      const a={...old},name=String(a.nickname||a.name||a.username||key||"");if(!name)continue;
+      a.nickname=name;a.password=String(a.password??a.passphrase??"");
+      const c=a.character||{},res=a.resources||{},inv=a.inventory||{},techs=a.techniques||{};
+      a.root=a.root??a.spiritRoot??c.root??null;
+      a.rankIndex=Math.max(0,Math.min(Number(a.rankIndex??c.rankIndex??a.levelIndex)||0,RANKS.length-1));
+      a.exp=Math.max(0,Number(a.exp??a.cultivation??c.xp??0)||0);
+      a.stones=Math.max(0,Number(a.stones??a.spiritStones??res.stones??100)||0);
+      a.qi=Math.max(0,Number(a.qi??res.qi??0)||0);
+      a.weapons=Array.isArray(a.weapons)?a.weapons:(Array.isArray(inv.weapons)?inv.weapons:["木剑"]);
+      if(!a.weapons.includes("木剑"))a.weapons.unshift("木剑");
+      a.equippedWeapon=a.equippedWeapon||"木剑";if(!a.weapons.includes(a.equippedWeapon))a.equippedWeapon="木剑";
+      a.materials=Array.isArray(a.materials)?a.materials:(Array.isArray(inv.materials)?inv.materials:[]);
+      a.pills=Array.isArray(a.pills)?a.pills:(Array.isArray(inv.pills)?inv.pills:[]);
+      a.sectId=a.sectId??null;a.dungeonProgress=a.dungeonProgress||{};
+      a.lastCultivate=a.lastCultivate||a.lastCultivationDate||"";
+      a.lastCheckin=a.lastCheckin||"";
+  a.checkinStreak=Number(a.checkinStreak)||0;
+  a.cultivateDay=a.cultivateDay||"";
+  a.cultivatesToday=Number(a.cultivatesToday)||0;
+  a.extraCultivates=Number(a.extraCultivates)||0;
+      a.learned=Array.isArray(a.learned)?a.learned:(Array.isArray(techs.learned)?techs.learned.map(x=>TECHNIQUES.find(t=>t.name===x)?.id||x):["basic"]);
+      if(!a.learned.includes("basic"))a.learned.unshift("basic");
+      a.equipped=a.equipped||TECHNIQUES.find(t=>t.name===techs.equipped)?.id||"basic";
+      if(!a.learned.includes(a.equipped))a.equipped="basic";
+      a.battleHistory=Array.isArray(a.battleHistory)?a.battleHistory:[];out[name]=a;
+      }
+    }
+    try{normalize(JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}"))}catch(e){}
+    try{
+      const newer=JSON.parse(localStorage.getItem("xiuxian_project_v1")||"{}");
+      for(const [name,data] of Object.entries(newer||{})){
+      const c=data.character||{},res=data.resources||{},inv=data.inventory||{},techs=data.techniques||{};
+      if(out[name]){
+        const a=out[name];
+        a.rankIndex=Math.max(a.rankIndex,Number(c.rankIndex)||0);
+        a.exp=Math.max(a.exp,Number(c.xp)||0);
+        a.stones=Math.max(a.stones,Number(res.stones)||0);
+        a.qi=Math.max(a.qi,Number(res.qi)||0);
+        const extraWeapons=Array.isArray(inv.weapons)?inv.weapons:[];
+        a.weapons=[...new Set([...(a.weapons||[]),...extraWeapons])];
+        a.materials=[...new Set([...(a.materials||[]),...(Array.isArray(inv.materials)?inv.materials:[])])];
+        a.pills=[...new Set([...(a.pills||[]),...(Array.isArray(inv.pills)?inv.pills:[])])];
+        if(!a.root&&c.root)a.root=c.root;
+        const extraLearned=Array.isArray(techs.learned)?techs.learned.map(x=>TECHNIQUES.find(t=>t.name===x)?.id||x):[];
+        a.learned=[...new Set([...(a.learned||[]),...extraLearned])];
+        const histories=Array.isArray(data.battleHistory)?data.battleHistory:[];
+        a.battleHistory=[...(a.battleHistory||[]),...histories].filter((item,i,arr)=>arr.findIndex(x=>x.id===item.id&&x.at===item.at&&x.opponent===item.opponent)===i).slice(0,20);
+        a.sectId=a.sectId||data.sectId||null;
+        a.dungeonProgress={...(a.dungeonProgress||{}),...(data.dungeonProgress||{})};
+        if(!a.weapons.includes(a.equippedWeapon))a.equippedWeapon="木剑";
+        continue;
+      }
+      const learned=Array.isArray(techs.learned)?techs.learned.map(x=>TECHNIQUES.find(t=>t.name===x)?.id||x):["basic"];
+      out[name]={nickname:data.nickname||name,password:String(data.password||""),root:c.root||"五行杂灵根",
+        rankIndex:Math.max(0,Math.min(Number(c.rankIndex)||0,RANKS.length-1)),exp:Number(c.xp)||0,stones:Number(res.stones??100),qi:Number(res.qi)||0,
+        weapons:Array.isArray(inv.weapons)?inv.weapons:["木剑"],equippedWeapon:data.equippedWeapon||"木剑",
+        materials:Array.isArray(inv.materials)?inv.materials:[],pills:Array.isArray(inv.pills)?inv.pills:[],
+          sectId:data.sectId||null,dungeonProgress:data.dungeonProgress||{},lastCultivate:data.lastCultivate||"",
+  lastCheckin:data.lastCheckin||"",
+  checkinStreak:Number(data.checkinStreak)||0,
+  cultivateDay:data.cultivateDay||"",
+  cultivatesToday:Number(data.cultivatesToday)||0,
+  extraCultivates:Number(data.extraCultivates)||0,
+  learned:learned.includes("basic")?learned:["basic",...learned],
+  equipped:TECHNIQUES.find(t=>t.name===techs.equipped)?.id||"basic",
+  battleHistory:Array.isArray(data.battleHistory)?data.battleHistory:[],
+  createdAt:data.createdAt||nowText()};
+      if(!out[name].weapons.includes("木剑"))out[name].weapons.unshift("木剑");
+      if(!out[name].weapons.includes(out[name].equippedWeapon))out[name].equippedWeapon="木剑";
+      }
+    }catch(e){}
+    return out;
+    }
+    let accounts=loadAccounts(),currentName=null,battle=null,expedition=null;
+    function saveAccounts(){localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts))}
+    function getPlayer(name=currentName){return name?accounts[name]:null}
+    function equippedTechnique(p){return TECHNIQUES.find(t=>t.id===p.equipped)||TECHNIQUES[0]}
+    function showPage(id){["welcome","register","login","game"].forEach(p=>document.getElementById(p).classList.toggle("hidden",p!==id))}
+    function getRandomRoot(){const n=Math.floor(Math.random()*100)+1;return ROOTS.find(r=>n>=r.min&&n<=r.max).name}
+    function register(){
+    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,msg=document.getElementById("regMessage");
+    if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return}
+    if(pass.length<6){msg.textContent="游戏口令至少需要 6 个字符。";return}
+    if(accounts[name]){msg.textContent="这个昵称已存在，请换一个。";return}
+    const root=getRandomRoot();
+    accounts[name]={
+    nickname:name,
+    password:pass,
+    root,
+    rankIndex:0,
+    exp:0,
+    stones:100,
+    qi:0,
+    weapons:["木剑"],
+    equippedWeapon:"木剑",
+    materials:["青木灵草","青木灵草","凝露花","凝露花"],
+    pills:[],
+    sectId:null,
+    dungeonProgress:{},
+    learned:["basic"],
+    equipped:"basic",
+    lastCultivate:"",
+    lastCheckin:"",
+    checkinStreak:0,
+    cultivateDay:"",
+    cultivatesToday:0,
+    extraCultivates:0,
+    battleHistory:[],
+    createdAt:nowText()
+    };
+    saveAccounts();msg.innerHTML="创建成功！灵根：<strong>"+escapeHtml(root)+"</strong>；初始境界：炼气一层。";
+    }
+    function login(){
+    const name=document.getElementById("loginName").value.trim(),pass=document.getElementById("loginPass").value,msg=document.getElementById("loginMessage");
+    if(!accounts[name]||accounts[name].password!==pass){msg.textContent="昵称或游戏口令不正确。";return}
+    currentName=name;battle=null;showPage("game");renderGame();
+    }
+    function logout(){currentName=null;battle=null;showPage("welcome")}
+    function renderGame(){
+    const p=getPlayer();if(!p)return;
+    document.getElementById("playerTitle").textContent="角色："+p.nickname;
+    document.getElementById("rankText").textContent=rankName(p.rankIndex);
+    document.getElementById("rootText").textContent=(p.root||"尚未觉醒")+"（修炼倍率 "+rootMultiplier(p).toFixed(2)+"×）";
+    document.getElementById("expText").textContent=p.exp;
+    document.getElementById("stoneText").textContent=p.stones;
+    document.getElementById("techText").textContent=equippedTechnique(p).name;
+    document.getElementById("weaponText").textContent=p.equippedWeapon||"木剑";
+    document.getElementById("qiText").textContent=Number(p.qi)||0;
+    renderInventory(p);
+    document.getElementById("sectText").textContent=p.sectId||"暂无宗门";
+    document.getElementById("dungeonText").textContent=Object.keys(p.dungeonProgress||{}).length+" 条记录";
+    document.getElementById("rankProgress").textContent=p.rankIndex===RANKS.length-1?"已达到当前版本最高境界。":"距离下一境界还需 "+Math.max(0,expNeeded(p.rankIndex)-p.exp)+" 点修为。";
+    const dailyState=dailyCultivateState(p);
+  const done=dailyState.used>=dailyState.limit;
+
+  document.getElementById("cultivateStatus").textContent=
+    "今日已修炼 "+dailyState.used+" / "+dailyState.limit+" 次。";
+
+  document.getElementById("cultivateBtn").disabled=done;
+    renderDaily();
+    renderAlchemy();
+
+    renderTechniques();
+    renderWeapons();
+    renderDungeons();
+    renderExpedition();
+    renderOpponents();
+    renderHistory();
+    renderBattle();
+    }
+    function cultivate(){
+    const p=getPlayer();
+    if(!p)return;
+
+    const state=dailyCultivateState(p);
+
+    if(state.used>=state.limit){
+      document.getElementById("cultivateMessage").textContent=
+      "今日修炼次数已用完，可以使用悟道丹增加次数。";
+      return;
+    }
+
+    const base=p.rankIndex<13
+      ?8
+      :10+Math.floor((p.rankIndex-13)/4)*2;
+
+    const bonus=equippedTechnique(p).bonus;
+    const raw=base+Math.floor(bonus*.5);
+    const gain=Math.max(2,Math.floor(raw*rootMultiplier(p)));
+
+    p.exp+=gain;
+    p.qi=(Number(p.qi)||0)+8;
+    p.cultivatesToday=state.used+1;
+    p.lastCultivate=todayKey();
+
+    saveAccounts();
+
+    document.getElementById("cultivateMessage").textContent=
+      "修炼完成！获得 "+gain+" 点修为。";
+
+    renderGame();
+    }
+
+    function breakthrough(){
+    const p=getPlayer();
+    if(!p)return;
+
+    if(p.rankIndex>=RANKS.length-1){
+      alert("已达到当前版本最高境界。");
+      return;
+    }
+
+    const need=expNeeded(p.rankIndex);
+
+    if(p.exp<need){
+      alert("修为不足！当前 "+p.exp+"，突破需要 "+need+"。");
+      return;
+    }
+
+    // 优先使用加成更高的筑基丹
+    let pillName="";
+    let bonus=0;
+
+    if(p.pills.includes("筑基丹")){
+      pillName="筑基丹";
+      bonus=12;
+    }else if(p.pills.includes("护脉丹")){
+      pillName="护脉丹";
+      bonus=8;
+    }
+
+    const chance=70+bonus;
+
+    if(pillName){
+      p.pills.splice(p.pills.indexOf(pillName),1);
+    }
+
+    const roll=Math.random()*100;
+
+    if(roll<chance){
+      p.exp-=need;
+      p.rankIndex++;
+
+      saveAccounts();
+      alert(
+      "突破成功！成功率："+chance+
+      "%。"+(pillName?"消耗了"+pillName+"。":"")+
+      "\n当前境界："+rankName(p.rankIndex)
+      );
+    }else{
+      saveAccounts();
+      alert(
+      "突破失败！成功率："+chance+
+      "%。修为没有损失。"+
+      (pillName?"消耗了"+pillName+"。":"")
+      );
+    }
+
+    renderGame();
+    }
+
+    const ALCHEMY_RECIPES=[
+    {
+      name:"聚灵丹",
+      cost:{"青木灵草":2,"凝露花":1},
+      desc:"恢复35点灵气"
+    },
+    {
+      name:"回春丹",
+      cost:{"青木灵草":1,"凝露花":2},
+      desc:"恢复45点气血"
+    },
+    {
+      name:"护脉丹",
+      cost:{"凝露花":2,"月纹矿":1},
+      desc:"突破成功率增加8%"
+    },
+    {
+      name:"筑基丹",
+      cost:{"青木灵草":3,"月纹矿":2},
+      desc:"突破成功率增加12%"
+    },
+    {
+      name:"悟道丹",
+      cost:{"凝露花":3,"古修残页":1},
+      desc:"增加1次今日修炼机会"
+    }
+    ];
+    function dailyCultivateState(p){
+    const today=todayKey();
+
+    if(!p.cultivateDay){
+      p.cultivateDay=today;
+      p.cultivatesToday=p.lastCultivate===today?1:0;
+      p.extraCultivates=Number(p.extraCultivates)||0;
+    }
+
+    if(p.cultivateDay!==today){
+      p.cultivateDay=today;
+      p.cultivatesToday=0;
+      p.extraCultivates=0;
+    }
+
+    p.cultivatesToday=Math.max(0,Number(p.cultivatesToday)||0);
+    p.extraCultivates=Math.max(0,Number(p.extraCultivates)||0);
+
+    return {
+      used:p.cultivatesToday,
+      limit:1+p.extraCultivates
+    };
+    }
+    function countItem(arr,name){
+    return (arr||[]).filter(x=>x===name).length;
+    }
+
+
+function renderInventory(p){
+  const box=document.getElementById("inventoryText");
+  if(!box)return;
+
+  const details={
+    "青木灵草":"普通药材｜炼制聚灵丹、回春丹的材料。",
+    "凝露花":"普通药材｜可用于炼制多种丹药。",
+    "月纹矿":"矿石材料｜可用于炼制护脉丹。",
+    "寒晶碎片":"特殊材料｜来自月影洞窟。",
+    "赤炎晶":"稀有材料｜来自赤炎遗迹。",
+    "古修残页":"特殊材料｜可用于炼制悟道丹。",
+    "木剑":"初始武器｜攻击加成 +0。",
+    "铁剑":"普通武器｜攻击加成 +5。",
+    "青锋剑":"进阶武器｜攻击加成 +12。",
+    "聚灵丹":"丹药｜使用后恢复35点灵气。",
+    "回春丹":"丹药｜战斗中使用可恢复45点气血。",
+    "护脉丹":"丹药｜突破时增加8%成功率。",
+    "筑基丹":"丹药｜突破时增加12%成功率。",
+    "悟道丹":"丹药｜使用后增加1次今日修炼机会。"
+  };
+
+  function group(title,items){
+    if(!items||!items.length)return "";
+    const counts={};
+    items.forEach(name=>{
+      counts[name]=(counts[name]||0)+1;
+    });
+
+    return `
+      <div class="logitem">
+        <strong>${title}</strong>
+        <div class="row">
+          ${Object.entries(counts).map(([name,count])=>`
+            <button class="inventory-item"
+              data-name="${escapeHtml(name)}">
+              ${escapeHtml(name)} ×${count}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  box.innerHTML=
+    group("🌿 药材与材料",p.materials)+
+    group("💊 丹药",p.pills)+
+    group("⚔️ 武器",p.weapons)+
+    `<div id="itemDetail" class="small">点击背包中的物品查看详情。</div>`;
+
+  box.querySelectorAll(".inventory-item").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const name=btn.dataset.name;
+      document.getElementById("itemDetail").textContent=
+        name+"："+(details[name]||"暂时没有详细介绍。");
+    });
+  });
+}
+
+function dailyCheckin(){
+  const p=getPlayer();
+  if(!p)return;
+
+  if(p.lastCheckin===todayKey()){
+    alert("今天已经签到过了！");
+    return;
+  }
+
+  const yesterday=new Date(Date.now()-86400000);
+  const y=yesterday.getFullYear()+"-"+
+    String(yesterday.getMonth()+1).padStart(2,"0")+"-"+
+    String(yesterday.getDate()).padStart(2,"0");
+
+  p.checkinStreak=
+    p.lastCheckin===y
+    ?(Number(p.checkinStreak)||0)+1
+    :1;
+
+  p.lastCheckin=todayKey();
+
+  const reward=20+Math.min(p.checkinStreak,7)*5;
+
+  p.stones+=reward;
+  p.materials.push("青木灵草");
+
+  if(p.checkinStreak%7===0){
+    p.materials.push("凝露花");
+  }
+
+  saveAccounts();
+  renderGame();
+
+  document.getElementById("dailyMessage").textContent=
+    "签到成功！获得灵石 "+reward+" 和青木灵草 ×1。";
+}
+
+    function renderDaily(){
+    const p=getPlayer();
+    if(!p)return;
+
+    const state=dailyCultivateState(p);
+
+    document.getElementById("dailyInfo").textContent=
+      (p.lastCheckin===todayKey()?"今日已签到":"今日尚未签到")+
+      " · 连续签到 "+(p.checkinStreak||0)+" 天"+
+      " · 今日修炼 "+state.used+"/"+state.limit+" 次";
+    }
+
+    function renderAlchemy(){
+    const p=getPlayer();
+    if(!p)return;
+
+    const inv=document.getElementById("alchemyInventory");
+    const box=document.getElementById("alchemyRecipes");
+
+    const names=["聚灵丹","回春丹","护脉丹","筑基丹","悟道丹"];
+
+    inv.innerHTML=names.map(n=>{
+      const count=countItem(p.pills,n);
+
+      return `
+      <div class="logitem">
+        <strong>${n}</strong>：${count} 颗
+        ${
+        ["聚灵丹","回春丹","悟道丹"].includes(n)
+        ?`<button onclick="usePillOutside('${n}')">使用</button>`
+        :""
+        }
+      </div>
+      `;
+    }).join("");
+
+    box.innerHTML=ALCHEMY_RECIPES.map((r,i)=>{
+      const enough=Object.entries(r.cost).every(
+      ([n,v])=>countItem(p.materials,n)>=v
+      );
+
+      return `
+      <div class="logitem">
+        <strong>${r.name}</strong>
+        <p class="small">${r.desc}</p>
+        <p class="small">
+        材料：
+        ${Object.entries(r.cost).map(([n,v])=>n+" × "+v).join("，")}
+        </p>
+        <button onclick="craftPill(${i})" ${enough?"":"disabled"}>
+        炼制
+        </button>
+      </div>
+      `;
+    }).join("");
+    }
+
+    function craftPill(i){
+    const p=getPlayer();
+    const r=ALCHEMY_RECIPES[i];
+
+    if(!p||!r)return;
+
+    for(const [n,v] of Object.entries(r.cost)){
+      if(countItem(p.materials,n)<v){
+      alert("材料不足："+n);
+      return;
+      }
+    }
+
+    for(const [n,v] of Object.entries(r.cost)){
+      for(let k=0;k<v;k++){
+      p.materials.splice(p.materials.indexOf(n),1);
+      }
+    }
+
+    p.pills.push(r.name);
+
+    saveAccounts();
+    renderGame();
+
+    document.getElementById("alchemyMessage").textContent=
+      "炼制成功："+r.name+" ×1。";
+    }
+
+    function usePillOutside(name){
+    const p=getPlayer();
+    if(!p)return;
+
+    const index=p.pills.indexOf(name);
+
+    if(index<0){
+      alert("没有这颗丹药。");
+      return;
+    }
+
+    if(name==="聚灵丹"){
+      if(p.qi>=100){
+      alert("灵气已经充足。");
+      return;
+      }
+      p.qi=Math.min(100,(Number(p.qi)||0)+35);
+    }else if(name==="回春丹"){
+      alert("回春丹可以在战斗中使用。");
+      return;
+    }else if(name==="悟道丹"){
+      const state=dailyCultivateState(p);
+
+      if(p.extraCultivates>=2){
+      alert("今日额外修炼次数已达到上限。");
+      return;
+      }
+
+      p.extraCultivates++;
+    }else{
+      alert("这颗丹药需要在突破时使用。");
+      return;
+    }
+
+    p.pills.splice(index,1);
+
+    saveAccounts();
+    renderGame();
+    }
+
+    function battleUseMedicine(name){
+    if(!battle||battle.finished)return;
+
+    const p=getPlayer();
+    const index=p.pills.indexOf(name);
+
+    if(index<0){
+      alert("丹药数量不足。");
+      return;
+    }
+
+    if(name==="聚灵丹"){
+      if(battle.me.mp>=battle.me.maxMp){
+      alert("灵力已经满了。");
+      return;
+      }
+      battle.me.mp=Math.min(battle.me.maxMp,battle.me.mp+35);
+
+    }else if(name==="回春丹"){
+      if(battle.me.hp>=battle.me.maxHp){
+      alert("气血已经满了。");
+      return;
+      }
+      battle.me.hp=Math.min(battle.me.maxHp,battle.me.hp+45);
+
+    }else{
+      return;
+    }
+
+    p.pills.splice(index,1);
+    saveAccounts();
+
+    log("你使用了"+name+"。");
+    renderBattle();
+    enemyTurn();
+    }
+
+    const DUNGEONS=[
+    {id:"herb_valley",name:"青木药谷",desc:"灵气温和，灵草遍地，偶尔有低阶妖兽守着药田。",minRank:2,power:18,exp:18,stones:25,materials:["青木灵草","凝露花"],pills:["小聚气丹"]},
+    {id:"moon_cave",name:"月影洞窟",desc:"幽暗洞窟里有守护傀儡、寒晶矿脉与隐秘宝箱。",minRank:3,power:42,exp:35,stones:55,materials:["月纹矿","寒晶碎片"],pills:["聚气丹","护脉丹"]},
+    {id:"flame_ruins",name:"赤炎遗迹",desc:"高阶古修遗迹，深处可能藏有赤炎晶、残缺功法与提升资质的天材地宝。仅建议高阶修士挑战。",minRank:21,power:125,exp:70,stones:110,materials:["赤炎晶","古修残页"],pills:["中品聚气丹","淬体丹"]}
+    ];
+    function renderDungeons(){
+    const p=getPlayer(),box=document.getElementById("dungeonList");if(!p||!box)return;box.innerHTML="";
+    if(!p.dungeonProgress||typeof p.dungeonProgress!=="object")p.dungeonProgress={};
+    DUNGEONS.forEach(d=>{
+      const unlocked=p.rankIndex>=d.minRank;
+  const completed=!!p.dungeonProgress?.[todayKey()]?.[d.id];
+      const div=document.createElement("div");div.className="logitem";
+      div.innerHTML="<strong>"+escapeHtml(d.name)+"</strong> <span class='badge'>"+(unlocked?"可进入":"境界未达")+"</span><p class='small'>"+escapeHtml(d.desc)+"</p><p class='small'>推荐境界："+escapeHtml(rankName(d.minRank))+"起 · 危险等级："+(d.power<30?"低":d.power<60?"中":"高")+"</p>";
+      const btn=document.createElement("button");btn.textContent=completed?"今日已探索":unlocked?"进入秘境":"境界不足";
+  btn.disabled=!unlocked||completed||!!(expedition&&expedition.active);btn.onclick=()=>exploreDungeon(d.id);div.appendChild(btn);box.appendChild(div);
+    });
+    }
+    function exploreDungeon(id){
+    const p=getPlayer(),d=DUNGEONS.find(x=>x.id===id);if(!p||!d)return;
+    if(p.dungeonProgress?.[todayKey()]?.[id]){
+    document.getElementById("dungeonMessage").textContent=
+      "今天已经探索过这个秘境了，明天再来吧。";
+    return;
+  }
+    if(p.rankIndex<d.minRank){document.getElementById("dungeonMessage").textContent="境界不足，暂时无法进入此秘境。";return}
+    if(expedition&&expedition.active){document.getElementById("dungeonMessage").textContent="你还在另一个秘境中，请先结束当前探索。";return}
+    expedition={id:d.id,step:0,active:true,loot:{exp:0,stones:0,materials:[],pills:[]},log:["你踏入"+d.name+"，四周灵气流动，前方有几条不同的路。"],visited:[]};
+    document.getElementById("dungeonMessage").textContent="已进入"+d.name+"。选择路线开始探索。";
+    renderExpedition();renderDungeons();
+    }
+    function renderExpedition(){
+    const panel=document.getElementById("dungeonAdventurePanel");if(!panel)return;
+    if(!expedition||!expedition.active){panel.classList.add("hidden");return}
+    panel.classList.remove("hidden");const d=DUNGEONS.find(x=>x.id===expedition.id),l=expedition.loot;
+    document.getElementById("dungeonAdventureTitle").textContent="🧭 "+d.name+" · 第 "+(expedition.step+1)+" / 7 区";
+    const map=document.getElementById("dungeonMap");if(map){const names=["入口","石径","药田","岔路","遗迹","秘室","核心" ];map.innerHTML=names.map((n,i)=>"<div class=\"map-node "+(i<expedition.step?"done ":i===expedition.step?"current ":"")+(i===6?"boss":"")+"\">"+(i<expedition.step?"✓ ":i===expedition.step?"◆ ":"")+n+"</div>").join("");}
+    document.getElementById("dungeonAdventureStatus").textContent="已探索 "+expedition.step+" 处 · 暂存修为 "+l.exp+" · 暂存灵石 "+l.stones+" · 材料 "+l.materials.length+" 件 · 丹药 "+l.pills.length+" 枚。离开时才会正式结算。";
+    document.getElementById("dungeonAdventureLog").innerHTML=expedition.log.slice(-5).map(x=>"<div class='logitem'>"+escapeHtml(x)+"</div>").join("");
+    const choices=document.getElementById("dungeonPathChoices"),actions=document.getElementById("dungeonAdventureActions");choices.innerHTML="";actions.innerHTML="";
+    if(expedition.waitingBattle){choices.innerHTML="<span class='small'>正在与妖兽战斗……战斗结束后可继续探索。</span>";return}
+    if(expedition.step>=7){choices.innerHTML="<p>你已征服秘境核心！可以结算并离开。</p>";}
+    else {
+      [["stone","🪨 沿石径（较稳）"],["herb","🌿 搜寻药田（偏采集）"],["deep","⚔️ 深入危险区（高风险）"]].forEach(([route,label])=>{const b=document.createElement("button");b.textContent=label;b.onclick=()=>chooseDungeonPath(route);choices.appendChild(b)});
+    }
+    const leave=document.createElement("button");leave.textContent=expedition.step>=7?"🏆 结算秘境":"🎒 带着收获离开";leave.onclick=()=>finishExpedition(expedition.step>=7);actions.appendChild(leave);
+    if(expedition.step>=7){choices.innerHTML="<p>核心区域已探索完成，带走战利品吧。</p>";}
+    }
+    function chooseDungeonPath(route){
+    if(!expedition||!expedition.active||expedition.waitingBattle)return;
+    const d=DUNGEONS.find(x=>x.id===expedition.id),l=expedition.loot;
+    if(expedition.step>=6){
+    startDungeonEncounter(d,true);
+    return;
+  }
+    expedition.step++;
+    const roll=Math.random();
+    if(route==="herb"&&roll<.48){const m=d.materials[Math.floor(Math.random()*d.materials.length)];l.materials.push(m);l.exp+=Math.max(1,Math.floor(d.exp*.06*rootMultiplier(getPlayer())));expedition.log.push("你在灵草丛中仔细搜寻，采到「"+m+"」，并感悟到一些灵气。");}
+    else if(route==="stone"&&roll<.18){const stones=8+Math.floor(Math.random()*Math.max(10,d.stones*.25));l.stones+=stones;expedition.log.push("你在石缝中发现一小袋灵石，暂时收获 "+stones+" 枚。");}
+    else if(roll<.55 || route==="deep"&&roll<.78){startDungeonEncounter(d);return;}
+    else if(roll<.72){const pill=d.pills[Math.floor(Math.random()*d.pills.length)];l.pills.push(pill);expedition.log.push("你发现一只保存尚好的药匣，得到丹药「"+pill+"」。");}
+    else if(roll<.78){const rare=["古修士手札","秘境核心碎片","灵兽内丹"][Math.floor(Math.random()*3)];l.materials.push(rare);l.stones+=10+Math.floor(Math.random()*20);expedition.log.push("✨ 你意外发现隐藏密室！破解禁制后获得稀有材料「"+rare+"」与一批灵石。");}
+    else if(roll<.90){const loss=Math.min(l.stones,5+Math.floor(Math.random()*8));l.stones-=loss;expedition.log.push("你触发了隐蔽禁制，慌乱中丢失了暂存的 "+loss+" 枚灵石。注意：已拥有的灵石不会损失。");}
+    else {const exp=2+Math.floor(Math.random()*Math.max(3,d.exp*.12));l.exp+=exp;expedition.log.push("你在石壁上发现古修士留下的心得，获得暂存修为 "+exp+" 点。");}
+    if(expedition.step>=5)expedition.log.push("你已深入秘境，前方危险陡增，建议带着收获离开。");
+    renderExpedition();
+    }
+    
+  function startDungeonEncounter(d,isBoss=false){
+    const p=getPlayer();
+    if(!p)return;
+
+    const s=combatStats(p);
+    const scale=1+expedition.step*.12;
+
+    const enemyName=isBoss
+      ?(["青木谷主·木灵王","月影守关者·玄甲傀儡","赤炎遗迹主·焚天兽"][DUNGEONS.findIndex(x=>x.id===d.id)])
+      :["迷雾妖狼","守药藤妖","巡山傀儡","洞穴蝠妖","遗迹守卫"][Math.floor(Math.random()*5)];
+
+    const dangerScale=1+(expedition.step*.12)+(d.power/180);
+
+    // Boss 数值：根据秘境等级和玩家境界动态调整
+    const playerRank=Math.max(0,p.rankIndex||0);
+    const bossScale=isBoss?2.2:1.45;
+
+    const baseHp=95+d.power*1.15;
+    const baseAttack=13+d.power*.32;
+    const baseDefense=d.power*.12;
+
+    const enemyHp=Math.round(
+      baseHp*scale*bossScale*dangerScale
+    );
+
+    const enemyAttack=Math.round(
+      (baseAttack+playerRank*.65)*scale*dangerScale*(isBoss?1.15:1)
+    );
+
+    const enemyDefense=Math.round(
+      (baseDefense+playerRank*.35)*dangerScale*(isBoss?1.15:1)
+    );
+
+    const enemy={
+      name:enemyName,
+      rank:rankName(Math.max(0,d.minRank)),
+      tech:TECHNIQUES[0],
+      weapon:isBoss?"秘境核心之力":"妖兽利爪",
+      hp:enemyHp,
+      maxHp:enemyHp,
+      mp:isBoss?35:25,
+      maxMp:isBoss?35:25,
+      attack:enemyAttack,
+      defense:enemyDefense,
+      guard:false,
+      weak:0,
+      healPower:isBoss?8:6,
+      isBoss
+    };
+
+    battle={
+      id:"dungeon_"+Date.now(),
+      mode:"dungeon",
+      me:makeFighter(currentName),
+      enemy,
+      turn:1,
+      finished:false,
+      logs:[]
+    };
+
+    expedition.waitingBattle=true;
+    expedition.log.push("危险！「"+enemy.name+"」挡住了去路，进入战斗！");
+
+    document.getElementById("battleResult").textContent="";
+    document.getElementById("battleArea").classList.remove("hidden");
+    document.getElementById("battleTitle").textContent=isBoss?"👑 秘境核心 Boss 战":"秘境遭遇战";
+    document.getElementById("newBattleBtn").classList.add("hidden");
+    document.getElementById("battleButtons").classList.remove("hidden");
+
+    log(isBoss
+      ?"秘境核心的守护者「"+enemy.name+"」现身！击败它才能征服秘境！"
+      :"你遭遇了"+enemy.name+"。击败它才能继续探索。"
+    );
+
+    renderBattle();
+    renderExpedition();
+  }
+
+  
+  function finishExpedition(success){
+    if(!expedition||!expedition.active)return;
+
+    const p=getPlayer();
+    const d=DUNGEONS.find(x=>x.id===expedition.id);
+    const l=expedition.loot;
+    const day=todayKey();
+
+    if(!p.dungeonProgress||typeof p.dungeonProgress!=="object"){
+      p.dungeonProgress={};
+    }
+    if(!p.dungeonProgress[day]){
+      p.dungeonProgress[day]={};
+    }
+
+    if(success){
+      const finishBonus=expedition.step>=7
+        ?Math.floor(d.exp*.65)
+        :Math.floor(l.exp*.08);
+
+      l.exp+=finishBonus;
+      l.exp=Math.floor(l.exp*rootMultiplier(p));
+
+      l.stones+=Math.floor(
+        d.stones*(expedition.step>=7?.75:expedition.step>=4?.38:.10)
+      );
+    }
+
+    p.exp+=l.exp;
+    p.stones+=l.stones;
+    p.materials.push(...l.materials);
+    p.pills.push(...l.pills);
+    p.qi=(Number(p.qi)||0)+Math.min(6,expedition.step);
+
+    let aptitudeMessage="";
+
+    if(success&&d.id==="flame_ruins"&&Math.random()<0.05){
+      if(improveRoot(p)){
+        const fruit="洗髓天灵果";
+        p.materials.push(fruit);
+        aptitudeMessage=" ✨ 机缘降临！你获得「洗髓天灵果」，灵根资质提升为："+p.root+"！";
+      }else{
+        const fruit="洗髓天灵果";
+        p.materials.push(fruit);
+        aptitudeMessage=" ✨ 机缘降临！获得「洗髓天灵果」（当前灵根已达最高资质，可留作纪念）。";
+      }
+    }
+
+    const result=expedition.forceExit
+      ?"战斗失败"
+      :success
+        ?"核心征服"
+        :"主动撤离";
+
+    p.dungeonProgress[day][d.id]={
+      result,
+      at:nowText(),
+      exp:l.exp,
+      stones:l.stones,
+      materials:[...l.materials],
+      pills:[...l.pills],
+      steps:expedition.step
+    };
+
+    const msg="探索结束！探索进度 "+expedition.step+
+      " / 7 区，结算：修为 +"+l.exp+
+      "、灵石 +"+l.stones+
+      "、材料 "+(l.materials.join("、")||"无")+
+      "、丹药 "+(l.pills.join("、")||"无")+"。"+aptitudeMessage;
+
+    expedition.active=false;
+    expedition.waitingBattle=false;
+
+    saveAccounts();
+
+    document.getElementById("dungeonMessage").textContent=msg;
+    document.getElementById("battleArea").classList.add("hidden");
+
+    battle=null;
+    renderGame();
+
+    document.getElementById("dungeonMessage").textContent=msg;
+  }
+
+    function renderTechniques(){
+    const p=getPlayer(),box=document.getElementById("techniqueList");box.innerHTML="";
+    TECHNIQUES.forEach(t=>{
+      const learned=p.learned.includes(t.id),canLearn=p.rankIndex>=t.minRank,div=document.createElement("div");div.className="logitem";
+      div.innerHTML="<strong>"+escapeHtml(t.name)+"</strong> <span class='badge'>"+(learned?(p.equipped===t.id?"已装备":"已学会"):"未学习")+"</span>"+
+      "<p class='small'>"+escapeHtml(t.effect)+"</p><p class='small'>修炼加成 +"+t.bonus+" · 攻击 +"+t.attack+" · 防御 +"+t.defense+
+      " · 技能："+escapeHtml(t.skill)+"（消耗 "+t.skillCost+" 灵力）"+(t.cost?" · 学习需要 "+t.cost+" 灵石":" · 免费入门")+
+      (t.minRank?" · 需要境界："+escapeHtml(rankName(t.minRank)):"")+"</p><div class='row'></div>";
+      const btn=document.createElement("button");
+      if(learned){btn.textContent=p.equipped===t.id?"当前装备":"装备功法";btn.disabled=p.equipped===t.id;btn.onclick=()=>equipTechnique(t.id)}
+      else{btn.textContent="学习功法";btn.disabled=!canLearn||p.stones<t.cost;btn.onclick=()=>learnTechnique(t.id)}
+      div.querySelector(".row").appendChild(btn);box.appendChild(div);
+    });
+    }
+    function learnTechnique(id){
+    const p=getPlayer(),t=TECHNIQUES.find(x=>x.id===id);if(!p||!t||p.learned.includes(id))return;
+    if(p.rankIndex<t.minRank||p.stones<t.cost){alert("境界不足或灵石不够。");return}
+    p.stones-=t.cost;p.learned.push(id);p.equipped=id;saveAccounts();renderGame();
+    }
+    function equipTechnique(id){const p=getPlayer();if(!p||!p.learned.includes(id))return;p.equipped=id;saveAccounts();renderGame()}
+    function weaponBonus(p){const w=WEAPONS.find(x=>x.name===(p.equippedWeapon||"木剑"));return w?w.bonus:0}
+    function renderWeapons(){
+    const p=getPlayer(),box=document.getElementById("weaponShop");if(!p||!box)return;box.innerHTML="";
+    WEAPONS.forEach(w=>{
+      const owned=p.weapons.includes(w.name),equipped=(p.equippedWeapon||"木剑")===w.name,div=document.createElement("div");div.className="logitem";
+      div.innerHTML="<strong>"+escapeHtml(w.name)+"</strong> <span class='badge'>"+(equipped?"已装备":owned?"已拥有":"未购买")+"</span><p class='small'>"+escapeHtml(w.desc)+" · 攻击加成 +"+w.bonus+(w.cost?" · 价格 "+w.cost+" 下品灵石":" · 初始武器")+"</p>";
+      const btn=document.createElement("button");
+      if(owned){btn.textContent=equipped?"当前装备":"装备武器";btn.disabled=equipped;btn.onclick=()=>equipWeapon(w.name)}
+      else{btn.textContent="购买并装备";btn.disabled=p.stones<w.cost;btn.onclick=()=>buyWeapon(w.name)}
+      div.appendChild(btn);box.appendChild(div);
+    });
+    }
+    function buyWeapon(name){
+    const p=getPlayer(),w=WEAPONS.find(x=>x.name===name);if(!p||!w)return;
+    if(p.weapons.includes(name)){equipWeapon(name);return}
+    if(p.stones<w.cost){document.getElementById("weaponMessage").textContent="灵石不足，无法购买。";return}
+    p.stones-=w.cost;p.weapons.push(name);p.equippedWeapon=name;saveAccounts();renderGame();
+    document.getElementById("weaponMessage").textContent="购买成功，已装备"+name+"。";
+    }
+    function equipWeapon(name){
+    const p=getPlayer();if(!p||!p.weapons.includes(name))return;
+    p.equippedWeapon=name;saveAccounts();renderGame();document.getElementById("weaponMessage").textContent="已装备"+name+"。";
+    }
+
+    function renderOpponents(){
+    const s=document.getElementById("opponentSelect"),old=s.value;s.innerHTML="";
+    Object.keys(accounts).filter(n=>n!==currentName).sort().forEach(n=>{
+      const o=document.createElement("option");o.value=n;o.textContent=n+" · "+rankName(accounts[n].rankIndex);s.appendChild(o);
+    });
+    if([...s.options].some(o=>o.value===old))s.value=old;
+    if(!s.options.length){const o=document.createElement("option");o.value="";o.textContent="还没有其他角色，请先创建第二个角色";s.appendChild(o)}
+    }
+    function combatStats(p){
+    const t=equippedTechnique(p),r=p.rankIndex;
+    return {maxHp:100+r*18+t.defense*2,maxMp:40+Math.min(60,r*2),attack:10+r*3+t.attack+weaponBonus(p),defense:Math.floor(r*1.5)+t.defense,tech:t,weapon:p.equippedWeapon||"木剑"};
+    }
+    function makeFighter(name){
+    const p=accounts[name],s=combatStats(p);
+    return {name,rank:rankName(p.rankIndex),tech:s.tech,weapon:s.weapon, hp:s.maxHp,maxHp:s.maxHp,mp:s.maxMp,maxMp:s.maxMp,attack:s.attack,defense:s.defense,guard:false,weak:0,healPower:Math.max(5,Math.floor(s.maxHp*.08))};
+    }
+    function startBattle(){
+    const opponent=document.getElementById("opponentSelect").value;
+    if(!currentName||!accounts[opponent]||opponent===currentName){alert("请先创建并选择另一名角色作为对手。");return}
+    battle={id:"battle_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),me:makeFighter(currentName),enemy:makeFighter(opponent),turn:1,finished:false,logs:[]};
+    document.getElementById("battleResult").textContent="";
+    document.getElementById("battleArea").classList.remove("hidden");
+    document.getElementById("newBattleBtn").classList.add("hidden");
+    document.getElementById("battleButtons").classList.remove("hidden");
+    log("切磋开始！双方各自行动一次，气血归零即告负。");
+    log("你的功法："+battle.me.tech.name+"，武器："+battle.me.weapon+"；对手功法："+battle.enemy.tech.name+"，武器："+battle.enemy.weapon+"。");
+    renderBattle();
+    }
+    function log(text){
+    if(!battle)return;battle.logs.push(text);if(battle.logs.length>40)battle.logs.shift();
+    }
+    function damage(attacker,target,mult=1){
+    let raw=Math.max(4,Math.round((attacker.attack*mult)-target.defense*.55));
+    if(attacker.weak>0){raw=Math.max(1,Math.round(raw*.7));attacker.weak--;}
+    if(target.guard){raw=Math.max(1,Math.round(raw*.35));target.guard=false;log(target.name+"的防御化解了大部分伤害！");}
+    const dealt=Math.min(target.hp,raw);target.hp=Math.max(0,target.hp-dealt);return dealt;
+    }
+    function animateFighter(which,type){
+    const el=document.getElementById(which==="me"?"myFighter":"enemyFighter");
+    el.classList.remove("hit","skill","guard");void el.offsetWidth;el.classList.add(type);
+    setTimeout(()=>el.classList.remove(type),600);
+    }
+    function battleAction(action){
+    if(!battle||battle.finished)return;
+    const me=battle.me,enemy=battle.enemy,t=me.tech;
+    if(action==="attack"){
+      const d=damage(me,enemy,1);animateFighter("enemy","hit");log("你使用普通攻击，造成 "+d+" 点伤害。");
+    }else if(action==="defend"){
+      me.guard=true;animateFighter("me","guard");log("你摆出防御架势，下一次受到的伤害降低。");
+    }else if(action==="meditate"){
+      const amount=Math.min(18,me.maxMp-me.mp);
+      if(amount<=0){alert("你的灵力已经充足，换个行动吧。");return}
+      me.mp+=amount;log("你运转周天，恢复 "+amount+" 点灵力。");
+    }else if(action==="skill"){
+      if(me.mp<t.skillCost){alert("灵力不足！需要 "+t.skillCost+" 点，目前只有 "+me.mp+" 点。");return}
+      me.mp-=t.skillCost;
+      const d=damage(me,enemy,t.mult);animateFighter("enemy","skill");
+      log("你施展「"+t.skill+"」，造成 "+d+" 点伤害，消耗 "+t.skillCost+" 点灵力。");
+      if(t.id==="wood"){
+      const heal=Math.min(me.maxHp-me.hp,Math.max(8,Math.round(me.maxHp*.09)));
+      me.hp+=heal;if(heal>0)log("青木灵气滋养自身，恢复 "+heal+" 点气血。");
+      }
+      if(t.id==="moon"&&enemy.hp>0){enemy.weak=1;log("寒月之力侵入对手经脉，使其下一次攻击减弱。");}
+    }
+    if(enemy.hp<=0){finishBattle("win");return}
+    renderBattle();
+    enemyTurn();
+    }
+    function enemyTurn(){
+    if(!battle||battle.finished)return;
+    const e=battle.enemy,m=battle.me,t=e.tech;
+    const hpRatio=e.hp/e.maxHp,mpRatio=e.mp/e.maxMp;
+    let action="attack";
+    // 智能对手：濒危时优先防御；灵力足且技能收益高时施法；灵力不足时择机恢复。
+    if(hpRatio<.28&&Math.random()<.58)action="defend";
+    else if(e.mp>=t.skillCost&&(hpRatio<.65||m.hp/m.maxHp>.45)&&Math.random() < ((t.id==="fire" || t.id==="heaven") ? 0.78 : 0.58))action="skill";
+    else if(mpRatio<.35&&e.mp< t.skillCost&&Math.random()<.7)action="meditate";
+    else if(Math.random()<.18)action="defend";
+    if(action==="defend"){
+      e.guard=true;animateFighter("enemy","guard");log("对手选择防御，准备抵挡下一次攻击。");
+    }else if(action==="meditate"){
+      const amount=Math.min(16,e.maxMp-e.mp);e.mp+=amount;log("对手运转灵力，恢复 "+amount+" 点灵力。");
+    }else if(action==="skill"&&e.mp>=t.skillCost){
+      e.mp-=t.skillCost;const d=damage(e,m,t.mult);animateFighter("me","skill");
+      log("对手施展「"+t.skill+"」，对你造成 "+d+" 点伤害。");
+      if(t.id==="wood"){const heal=Math.min(e.maxHp-e.hp,Math.max(7,Math.round(e.maxHp*.07)));e.hp+=heal;if(heal)log("对手借青木灵气恢复 "+heal+" 点气血。");}
+      if(t.id==="moon"&&m.hp>0){m.weak=1;log("寒月之力令你下一次攻击减弱。");}
+    }else{
+      const d=damage(e,m,1);animateFighter("me","hit");log("对手发动普通攻击，对你造成 "+d+" 点伤害。");
+    }
+    if(m.hp<=0){finishBattle("loss");return}
+    battle.turn++;renderBattle();
+    }
+    function finishBattle(result){
+    if(!battle||battle.finished)return;
+    battle.finished=true;battle.result=result;
+    if(battle.mode==="dungeon"){
+      const d=expedition?DUNGEONS.find(x=>x.id===expedition.id):null;
+      if(result==="win"&&expedition&&d){
+      const isBoss=!!battle.enemy.isBoss;const gain=d.exp?Math.max(3,Math.floor(d.exp*(isBoss?1.8:(.18+Math.random()*.18)))):5;
+      expedition.loot.exp+=gain;const stones=isBoss?d.stones*2:5+Math.floor(Math.random()*Math.max(8,d.stones*.2));expedition.loot.stones+=stones;
+      if(isBoss){expedition.loot.materials.push(["木灵王核心","玄甲傀儡核心","焚天兽内丹"][DUNGEONS.findIndex(x=>x.id===d.id)]);expedition.loot.pills.push(d.pills[d.pills.length-1]);expedition.step=7;}
+      if(Math.random()<.55)expedition.loot.materials.push(d.materials[Math.floor(Math.random()*d.materials.length)]);
+      if(Math.random()<.22)expedition.loot.pills.push(d.pills[Math.floor(Math.random()*d.pills.length)]);
+      expedition.log.push(isBoss?"🏆 你击败了秘境 Boss「"+battle.enemy.name+"」！获得大量修为、灵石和核心材料，秘境已被征服！":"你击败了"+battle.enemy.name+"！暂存修为 +"+gain+"、灵石 +"+stones+"，可继续深入。");
+      document.getElementById("battleResult").innerHTML='<span class="green">妖兽已被击败！</span><br>奖励已放入秘境暂存收获。';
+      document.getElementById("newBattleBtn").textContent=isBoss?"结算战利品":"继续探索";
+      }else if(expedition){
+      expedition.log.push("你不敌守卫，被迫撤离秘境；本次暂存收获保留一半。 ");
+      expedition.loot.exp=Math.floor(expedition.loot.exp/2);expedition.loot.stones=Math.floor(expedition.loot.stones/2);
+      document.getElementById("battleResult").innerHTML='<span class="red">战斗失败，你被迫撤退。</span><br>可以结算带出的部分收获。';
+      document.getElementById("newBattleBtn").textContent="结算并离开";
+      expedition.forceExit=true;
+      }
+      saveAccounts();document.getElementById("battleButtons").classList.add("hidden");document.getElementById("newBattleBtn").classList.remove("hidden");renderBattle();renderExpedition();return;
+    }
+    const winnerName=result==="win"?battle.me.name:battle.enemy.name;
+    const loserName=result==="win"?battle.enemy.name:battle.me.name;
+    const reward=20,loser=accounts[loserName],winner=accounts[winnerName];
+    const penalty=Math.min(5,loser?loser.stones:0);
+    if(winner)winner.stones+=reward;
+    if(loser)loser.stones=Math.max(0,loser.stones-penalty);
+    const at=nowText();
+    [battle.me.name,battle.enemy.name].forEach(name=>{
+      const p=accounts[name];if(!p)return;
+      const won=name===winnerName,change=won?reward:-penalty;
+      p.battleHistory.unshift({id:battle.id,at,opponent:name===battle.me.name?battle.enemy.name:battle.me.name,result:won?"胜利":"失败",change,description:won?"切磋胜利，获得 "+reward+" 下品灵石。":"切磋失败，扣除 "+penalty+" 下品灵石。"});
+      p.battleHistory=p.battleHistory.slice(0,20);
+    });
+    log("战斗结束！"+winnerName+"获胜。");
+    log(winnerName+"获得 "+reward+" 下品灵石；"+loserName+"扣除 "+penalty+" 下品灵石。");
+    saveAccounts();
+    document.getElementById("battleResult").innerHTML=(result==="win"?'<span class="green">恭喜！你赢得了切磋。</span>':'<span class="red">本场切磋失败，下次再努力。</span>')+
+      "<br>胜者获得 "+reward+" 下品灵石；败者扣除 "+penalty+" 下品灵石。";
+    document.getElementById("battleButtons").classList.add("hidden");
+    document.getElementById("newBattleBtn").classList.remove("hidden");
+    renderBattle();renderGame();
+    }
+    function renderBattle(){
+    const area=document.getElementById("battleArea");
+    if(!battle){area.classList.add("hidden");return}
+    area.classList.remove("hidden");
+    const m=battle.me,e=battle.enemy;
+    document.getElementById("battleTitle").textContent=m.name+" VS "+e.name+" · 第 "+battle.turn+" 回合";
+    document.getElementById("myBattleName").textContent=m.name+"（"+m.rank+"）";
+    document.getElementById("enemyBattleName").textContent=e.name+"（"+e.rank+"）";
+    document.getElementById("myHpText").textContent="气血："+m.hp+" / "+m.maxHp;
+    document.getElementById("enemyHpText").textContent="气血："+e.hp+" / "+e.maxHp;
+    document.getElementById("myMpText").textContent="灵力："+m.mp+" / "+m.maxMp;
+    document.getElementById("enemyMpText").textContent="灵力："+e.mp+" / "+e.maxMp;
+    document.getElementById("myHpBar").style.width=Math.max(0,m.hp/m.maxHp*100)+"%";
+    document.getElementById("enemyHpBar").style.width=Math.max(0,e.hp/e.maxHp*100)+"%";
+    document.getElementById("myMpBar").style.width=Math.max(0,m.mp/m.maxMp*100)+"%";
+    document.getElementById("enemyMpBar").style.width=Math.max(0,e.mp/e.maxMp*100)+"%";
+    document.getElementById("myStats").textContent="攻击 "+m.attack+" · 防御 "+m.defense+" · "+m.weapon+" · "+m.tech.name;
+    document.getElementById("enemyStats").textContent="攻击 "+e.attack+" · 防御 "+e.defense+" · "+e.weapon+" · "+e.tech.name;
+    document.getElementById("myStatus").textContent=(m.guard?"正在防御 · ":"")+(m.weak>0?"攻击受削弱":"");
+    document.getElementById("enemyStatus").textContent=(e.guard?"正在防御 · ":"")+(e.weak>0?"攻击受削弱":"");
+    document.getElementById("turnText").textContent=battle.finished?"战斗已结束":"轮到你行动。对手行动后，回合数增加。";
+    document.getElementById("skillBtn").textContent="✨ "+m.tech.skill+"（"+m.tech.skillCost+"灵力）";
+    document.getElementById("skillBtn").disabled=m.mp<m.tech.skillCost||battle.finished;
+    document.getElementById("skillHint").textContent=m.mp<m.tech.skillCost?"灵力不足：可选择运转灵力恢复。":m.tech.effect;
+    document.getElementById("battleLog").innerHTML=battle.logs.map(x=>"<div class='logitem'>"+escapeHtml(x)+"</div>").join("");
+    document.getElementById("battleLog").scrollTop=document.getElementById("battleLog").scrollHeight;
+    document.getElementById("battleButtons").classList.toggle("hidden",battle.finished);
+    document.getElementById("newBattleBtn").classList.toggle("hidden",!battle.finished);
+    }
+    function resetBattle(){
+    if(battle&&battle.mode==="dungeon"&&battle.finished){
+      const lost=!!(expedition&&expedition.forceExit);battle=null;document.getElementById("battleArea").classList.add("hidden");
+      document.getElementById("battleResult").textContent="";document.getElementById("battleButtons").classList.remove("hidden");document.getElementById("newBattleBtn").classList.add("hidden");
+      if(expedition){expedition.waitingBattle=false;if(lost){finishExpedition(false);return;}if(expedition.step>=7){finishExpedition(true);return;}renderExpedition();}return;
+    }
+    battle=null;document.getElementById("battleArea").classList.add("hidden");
+    document.getElementById("battleResult").textContent="";document.getElementById("battleButtons").classList.remove("hidden");document.getElementById("newBattleBtn").classList.add("hidden");renderGame();
+    }
+    function renderHistory(){
+    const p=getPlayer(),box=document.getElementById("battleHistory");if(!p||!box)return;
+    const list=p.battleHistory||[];
+    if(!list.length){box.innerHTML='<p class="small">暂无战斗记录。完成第一场切磋后，这里会显示结果。</p>';return}
+    box.innerHTML=list.map(item=>{
+      const cls=item.result==="胜利"?"green":item.result==="失败"?"red":"",change=Number(item.change)||0;
+      return "<div class='logitem'><strong class='"+cls+"'>"+escapeHtml(item.result)+"</strong> · 对手："+escapeHtml(item.opponent)+
+      "<br><span class='small'>"+escapeHtml(item.at)+"</span><br>灵石变化：<strong class='"+(change>0?"green":change<0?"red":"")+"'>"+(change>0?"+":"")+change+"</strong>"+
+      "<br><span class='small'>"+escapeHtml(item.description||"切磋结束")+"</span></div>";
+    }).join("");
+    }
+    showPage("welcome");
+    </script>
+    </body>
+    </html>
