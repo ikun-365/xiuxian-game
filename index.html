@@ -36,6 +36,14 @@
     .actionbtn{flex:1 1 120px;min-height:48px}
     #battleLog{max-height:250px;overflow:auto;background:#0d1528}
     footer{text-align:center;color:var(--muted);font-size:12px;margin:24px 0}
+    .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0}
+    .hub-card{display:block;width:100%;min-height:112px;text-align:left;padding:16px;background:linear-gradient(145deg,#263957,#18263f);border:1px solid #526789;border-radius:14px}
+    .hub-card .hub-icon{display:block;font-size:27px;margin-bottom:7px}
+    .hub-card strong{display:block;color:var(--gold);font-size:16px;margin-bottom:4px}
+    .hub-card span:last-child{font-size:12px;color:var(--muted);line-height:1.5}
+    .subpage-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .subpage-head h2{flex:1;margin:8px 0}
+    .back-button{background:#465875}
     </style>
     </head>
     <body>
@@ -66,8 +74,12 @@
     </section>
 
     <section id="game" class="hidden">
+      <div id="gameHome">
       <div class="panel">
-        <div class="row" style="justify-content:space-between"><h2 id="playerTitle">我的角色</h2><button onclick="logout()">退出登录</button></div>
+        <div class="row" style="justify-content:space-between">
+  <h2 id="playerTitle">我的角色</h2>
+  <button onclick="logout()">退出登录</button>
+</div>
         <div class="grid">
           <div class="stat">境界<strong id="rankText">—</strong></div>
           <div class="stat">灵根<strong id="rootText">—</strong></div>
@@ -77,10 +89,16 @@
           <div class="stat">装备武器<strong id="weaponText">—</strong></div>
           <div class="stat">灵气<strong id="qiText">—</strong></div>
         </div><p id="rankProgress" class="small"></p>
-        <div class="stat">
-    <strong>🎒 我的背包</strong>
-    <div id="inventoryText" class="small">背包暂时为空</div>
-  </div>
+      </div>
+
+      <div class="panel">
+        <h2>📖 修仙功能</h2>
+        <p class="small">常用功能已整理到独立页面，点击进入后可查看详情，完成后返回主页。</p>
+        <div class="hub-grid">
+          <button class="hub-card" onclick="openSubpage('library')"><span class="hub-icon">📚</span><strong>藏书阁</strong><span>查看、学习与切换已收录功法</span></button>
+          <button class="hub-card" onclick="openSubpage('alchemy')"><span class="hub-icon">🧪</span><strong>丹房</strong><span>查看丹药、炼丹配方与材料需求</span></button>
+          <button class="hub-card" onclick="openSubpage('warehouse')"><span class="hub-icon">🎒</span><strong>仓库</strong><span>分类查看材料、丹药和武器数量</span></button>
+        </div>
       </div>
 
       <div class="panel">
@@ -99,17 +117,7 @@
       <p id="dailyMessage" class="small"></p>
     </div>
 
-    <div class="panel">
-      <h2>🧪 丹药与炼丹</h2>
-      <p class="small">聚灵丹恢复灵气，回春丹恢复气血，护脉丹和筑基丹提高突破成功率，悟道丹增加修炼次数。</p>
-      <div id="alchemyInventory"></div>
-      <h3>炼丹配方</h3>
-      <div id="alchemyRecipes"></div>
-      <p id="alchemyMessage" class="small"></p>
-    </div> <div class="panel">
-        <h2>📚 功法系统</h2><p class="small">学习功法需要消耗灵石；已学会的功法可以免费切换。</p>
-        <div id="techniqueList"></div>
-      </div>
+
 
       <div class="panel">
         <h2>🗡️ 武器商店</h2><p class="small">购买武器会自动装备；已拥有的武器可以免费切换。武器加成会影响切磋伤害。</p>
@@ -162,11 +170,46 @@
         </div>
       </div>
 
+
       <div class="panel">
-        <h2>📜 战斗记录</h2><p class="small">保存最近 20 场记录。战斗结束后自动结算。</p>
-        <div id="battleHistory"></div><button onclick="renderHistory()">刷新记录</button>
+        <h2>📜 战斗记录</h2>
+        <p class="small">保存最近 20 场记录。战斗结束后自动结算。</p>
+        <div id="battleHistory"></div>
+        <button onclick="renderHistory()">刷新记录</button>
+      </div>
+
+      <!-- 账户管理：放在游戏主页最底部 -->
+      <div class="panel" style="text-align:center;margin-top:25px">
+        <h3>⚙️ 账户管理</h3>
+        <p class="small">注销账户将永久删除当前浏览器中的角色存档，请谨慎操作。</p>
+        <button
+          onclick="deleteAccount()"
+          style="background:#963e4a;color:white">
+          注销账户
+        </button>
+      </div>
+      </div><!-- /gameHome -->
+
+      <div id="subpage-library" class="hidden">
+        <div class="panel"><div class="subpage-head"><button class="back-button" onclick="closeSubpage()">← 返回主页</button><h2>📚 藏书阁</h2></div>
+          <p class="small">学习功法需要消耗灵石；已学会的功法可以免费切换。选择适合自己的修炼道路。</p>
+          <div id="techniqueList"></div>
+        </div>
+      </div>
+      <div id="subpage-alchemy" class="hidden">
+        <div class="panel"><div class="subpage-head"><button class="back-button" onclick="closeSubpage()">← 返回主页</button><h2>🧪 丹房</h2></div>
+          <p class="small">查看丹药库存、炼丹配方和所需材料。材料不足时无法炼制。</p>
+          <div id="alchemyInventory"></div><h3>炼丹配方</h3><div id="alchemyRecipes"></div><p id="alchemyMessage" class="small"></p>
+        </div>
+      </div>
+      <div id="subpage-warehouse" class="hidden">
+        <div class="panel"><div class="subpage-head"><button class="back-button" onclick="closeSubpage()">← 返回主页</button><h2>🎒 仓库</h2></div>
+          <p class="small">点击物品名称可查看详情。物品按材料、丹药和武器分类显示。</p>
+          <div id="inventoryText" class="small">仓库暂时为空</div>
+        </div>
       </div>
     </section>
+
     <footer>《修仙界》本地测试版 · 角色数据保存在当前浏览器</footer>
     </main>
 
@@ -208,6 +251,16 @@
     };
     const ROOT_ORDER=["五行杂灵根","四灵根","三灵根","双灵根","单灵根","变异灵根","天灵根","混沌灵根"];
     function rootMultiplier(p){return ROOT_MULTIPLIERS[p.root]||0.55}
+    // 灵根资质越高，突破所需修为越少；折扣只影响突破门槛，不改变战斗灵力。
+    const ROOT_BREAKTHROUGH_DISCOUNTS={
+      "五行杂灵根":0,"四灵根":0.05,"三灵根":0.10,"双灵根":0.15,
+      "单灵根":0.20,"变异灵根":0.25,"天灵根":0.30,"混沌灵根":0.35
+    };
+    function breakthroughNeed(p,index=p.rankIndex){
+      const base=expNeeded(index);
+      const discount=ROOT_BREAKTHROUGH_DISCOUNTS[p.root]||0;
+      return Math.max(1,Math.ceil(base*(1-discount)));
+    }
     function improveRoot(p){
     const i=ROOT_ORDER.indexOf(p.root||"五行杂灵根");
     if(i<0||i>=ROOT_ORDER.length-1)return false;
@@ -339,9 +392,41 @@
     function login(){
     const name=document.getElementById("loginName").value.trim(),pass=document.getElementById("loginPass").value,msg=document.getElementById("loginMessage");
     if(!accounts[name]||accounts[name].password!==pass){msg.textContent="昵称或游戏口令不正确。";return}
-    currentName=name;battle=null;showPage("game");renderGame();
+    currentName=name;battle=null;showPage("game");closeSubpage();renderGame();
     }
     function logout(){currentName=null;battle=null;showPage("welcome")}
+
+    function deleteAccount(){
+      if(!currentName || !accounts[currentName]) return;
+      const DELETE_LIMIT_KEY="xiuxian_account_delete_day_v1";
+      const today=todayKey();
+      if(localStorage.getItem(DELETE_LIMIT_KEY)===today){alert("今天已经注销过一个账号了，请明天再来。");return;}
+      const name=currentName;
+      const answer=prompt("注销账户将永久删除当前浏览器中的角色存档。\n请输入角色昵称确认："+name);
+      if(answer===null)return;
+      if(answer.trim()!==name){alert("昵称不正确，注销已取消。");return;}
+      if(!confirm("确定永久删除账户「"+name+"」吗？此操作无法撤销！"))return;
+      delete accounts[name];saveAccounts();
+      try{const legacy=JSON.parse(localStorage.getItem("xiuxian_project_v1")||"{}");delete legacy[name];localStorage.setItem("xiuxian_project_v1",JSON.stringify(legacy));}
+      catch(e){console.warn("旧存档清理失败",e);}
+      localStorage.setItem(DELETE_LIMIT_KEY,today);
+      currentName=null;battle=null;expedition=null;closeSubpage();showPage("welcome");
+      alert("账户已注销。今天不能再注销其他账号，明天恢复。");
+    }
+
+    function openSubpage(name){
+      const allowed=["library","alchemy","warehouse"];
+      if(!allowed.includes(name))return;
+      document.getElementById("gameHome").classList.add("hidden");
+      allowed.forEach(page=>document.getElementById("subpage-"+page).classList.toggle("hidden",page!==name));
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+    function closeSubpage(){
+      const home=document.getElementById("gameHome");if(home)home.classList.remove("hidden");
+      ["library","alchemy","warehouse"].forEach(page=>{const el=document.getElementById("subpage-"+page);if(el)el.classList.add("hidden");});
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
     function renderGame(){
     const p=getPlayer();if(!p)return;
     document.getElementById("playerTitle").textContent="角色："+p.nickname;
@@ -355,7 +440,9 @@
     renderInventory(p);
     document.getElementById("sectText").textContent=p.sectId||"暂无宗门";
     document.getElementById("dungeonText").textContent=Object.keys(p.dungeonProgress||{}).length+" 条记录";
-    document.getElementById("rankProgress").textContent=p.rankIndex===RANKS.length-1?"已达到当前版本最高境界。":"距离下一境界还需 "+Math.max(0,expNeeded(p.rankIndex)-p.exp)+" 点修为。";
+    const nextNeed=breakthroughNeed(p);
+    const rootDiscount=Math.round((ROOT_BREAKTHROUGH_DISCOUNTS[p.root]||0)*100);
+    document.getElementById("rankProgress").textContent=p.rankIndex===RANKS.length-1?"已达到当前版本最高境界。":"下一境界需 "+nextNeed+" 点修为（灵根折扣 "+rootDiscount+"%），还差 "+Math.max(0,nextNeed-p.exp)+" 点。";
     const dailyState=dailyCultivateState(p);
   const done=dailyState.used>=dailyState.limit;
 
@@ -416,7 +503,7 @@
       return;
     }
 
-    const need=expNeeded(p.rankIndex);
+    const need=breakthroughNeed(p);
 
     if(p.exp<need){
       alert("修为不足！当前 "+p.exp+"，突破需要 "+need+"。");
@@ -710,7 +797,6 @@ function dailyCheckin(){
       alert("没有这颗丹药。");
       return;
     }
-
     if(name==="聚灵丹"){
       if(p.qi>=100){
       alert("灵气已经充足。");
