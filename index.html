@@ -18,6 +18,7 @@
     button:disabled{opacity:.4;cursor:not-allowed}
     input,select{background:#0d1528;color:white;border:1px solid #526483;max-width:100%}
     input{width:100%;margin:6px 0 12px}
+    .password-row{display:flex;gap:8px;align-items:center}.password-row input{flex:1;min-width:0}.password-row button{margin:6px 0 12px;white-space:nowrap}
     label{display:block;margin-top:8px;color:var(--muted)}
     .small{font-size:13px;color:var(--muted)}.gold{color:var(--gold)}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}
     .hidden{display:none!important}
@@ -59,7 +60,7 @@
     <section id="register" class="panel hidden">
       <h2>创建修仙角色</h2>
       <label>角色昵称（2–16 个字符）</label><input id="regName" maxlength="16" placeholder="输入游戏昵称">
-      <label>游戏口令（至少 6 个字符）</label><input id="regPass" type="password" placeholder="仅用于这个游戏">
+      <label>游戏口令（至少 6 个字符）</label><div class="password-row"><input id="regPass" type="password" placeholder="仅用于这个游戏"><button type="button" onclick="togglePassword('regPass',this)">显示</button></div>
       <p class="small">本地测试版，请勿使用真实账号密码。</p>
       <div class="row"><button onclick="register()">抽取灵根并创建</button><button onclick="showPage('welcome')">返回</button></div>
       <p id="regMessage"></p>
@@ -68,7 +69,7 @@
     <section id="login" class="panel hidden">
       <h2>角色登录</h2>
       <label>角色昵称</label><input id="loginName" maxlength="16" placeholder="输入角色昵称">
-      <label>游戏口令</label><input id="loginPass" type="password" placeholder="输入游戏口令">
+      <label>游戏口令</label><div class="password-row"><input id="loginPass" type="password" placeholder="输入游戏口令"><button type="button" onclick="togglePassword('loginPass',this)">显示</button></div>
       <div class="row"><button onclick="login()">登录</button><button onclick="showPage('welcome')">返回</button></div>
       <p id="loginMessage"></p>
     </section>
@@ -356,6 +357,15 @@
     function equippedTechnique(p){return TECHNIQUES.find(t=>t.id===p.equipped)||TECHNIQUES[0]}
     function showPage(id){["welcome","register","login","game"].forEach(p=>document.getElementById(p).classList.toggle("hidden",p!==id))}
     function getRandomRoot(){const n=Math.floor(Math.random()*100)+1;return ROOTS.find(r=>n>=r.min&&n<=r.max).name}
+    function togglePassword(inputId,button){
+      const input=document.getElementById(inputId);
+      if(!input)return;
+      const showing=input.type==="password";
+      input.type=showing?"text":"password";
+      button.textContent=showing?"隐藏":"显示";
+      button.setAttribute("aria-pressed",String(showing));
+    }
+
     function register(){
     const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,msg=document.getElementById("regMessage");
     if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return}
@@ -387,7 +397,10 @@
     battleHistory:[],
     createdAt:nowText()
     };
-    saveAccounts();msg.innerHTML="创建成功！灵根：<strong>"+escapeHtml(root)+"</strong>；初始境界：炼气一层。";
+    saveAccounts();
+    currentName=name;battle=null;expedition=null;
+    showPage("game");closeSubpage();renderGame();
+    document.getElementById("cultivateMessage").textContent="创建成功！灵根："+root+"；初始境界：炼气一层。欢迎踏入修仙界！";
     }
     function login(){
     const name=document.getElementById("loginName").value.trim(),pass=document.getElementById("loginPass").value,msg=document.getElementById("loginMessage");
