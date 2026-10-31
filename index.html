@@ -61,6 +61,7 @@
       <h2>创建修仙角色</h2>
       <label>角色昵称（2–16 个字符）</label><input id="regName" maxlength="16" placeholder="输入游戏昵称">
       <label>游戏口令（至少 6 个字符）</label><div class="password-row"><input id="regPass" type="password" placeholder="仅用于这个游戏"><button type="button" onclick="togglePassword('regPass',this)">显示</button></div>
+      <label>再次输入游戏口令</label><div class="password-row"><input id="regPassConfirm" type="password" placeholder="再次输入相同口令"><button type="button" onclick="togglePassword('regPassConfirm',this)">显示</button></div>
       <p class="small">本地测试版，请勿使用真实账号密码。</p>
       <div class="row"><button onclick="register()">抽取灵根并创建</button><button onclick="showPage('welcome')">返回</button></div>
       <p id="regMessage"></p>
@@ -367,9 +368,10 @@
     }
 
     function register(){
-    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,msg=document.getElementById("regMessage");
+    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,confirmPass=document.getElementById("regPassConfirm").value,msg=document.getElementById("regMessage");
     if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return}
     if(pass.length<6){msg.textContent="游戏口令至少需要 6 个字符。";return}
+    if(pass!==confirmPass){msg.textContent="两次输入的口令不一致，请检查后重试。";return}
     if(accounts[name]){msg.textContent="这个昵称已存在，请换一个。";return}
     const root=getRandomRoot();
     accounts[name]={
