@@ -62,7 +62,9 @@
       <label>角色昵称（2–16 个字符）</label><input id="regName" maxlength="16" placeholder="输入游戏昵称">
       <label>游戏口令（至少 6 个字符）</label><div class="password-row"><input id="regPass" type="password" placeholder="仅用于这个游戏"><button type="button" onclick="togglePassword('regPass',this)">显示</button></div>
       <label>再次输入游戏口令</label><div class="password-row"><input id="regPassConfirm" type="password" placeholder="再次输入相同口令"><button type="button" onclick="togglePassword('regPassConfirm',this)">显示</button></div>
-      <p class="small">本地测试版，请勿使用真实账号密码。</p>
+      <label>所属宗门（可选）</label><input id="regSect" maxlength="24" placeholder="例如：青云宗；不填则暂未加入宗门">
+      <label>管理员代码（可选，仅测试用）</label><input id="regAdminCode" type="password" placeholder="普通玩家留空">
+      <p class="small">本地测试版，请勿使用真实账号密码。管理员代码仅用于测试，不具备正式安全保护。</p>
       <div class="row"><button onclick="register()">抽取灵根并创建</button><button onclick="showPage('welcome')">返回</button></div>
       <p id="regMessage"></p>
     </section>
@@ -127,9 +129,19 @@
       </div>
       <div class="panel">
         <h2>🧭 修仙世界</h2>
-        <div class="grid"><div class="stat">宗门<strong id="sectText">暂无宗门</strong></div><div class="stat">秘境记录<strong id="dungeonText">尚无记录</strong></div></div>
+        <div class="grid"><div class="stat" role="button" tabindex="0" onclick="editSect()" onkeydown="if(event.key==='Enter'||event.key===' ')editSect()" style="cursor:pointer"><span>宗门（点击设置）</span><strong id="sectText">暂无宗门</strong></div><div class="stat">秘境记录<strong id="dungeonText">尚无记录</strong></div></div>
         <p class="small">秘境每日可挑战各副本一次。胜利可获得修为、灵石和随机材料/丹药；失败不会扣除灵石。</p>
         <h3>🌲 秘境探索</h3><p class="small">探索包含七个区域、分支路线、隐藏密室与最终 Boss。越深入危险越高；击败核心守护者可获得额外战利品，也可以随时撤离保住暂存收获。</p><div id="dungeonList"></div><div id="dungeonMessage" class="stat" aria-live="polite">选择一个秘境开始探索。</div><div id="dungeonAdventurePanel" class="panel hidden"><h3 id="dungeonAdventureTitle">秘境探索中</h3><p id="dungeonAdventureStatus"></p><div id="dungeonMap" class="dungeon-map"></div><div id="dungeonAdventureLog" class="logitem"></div><div id="dungeonPathChoices" class="row"></div><div id="dungeonAdventureActions" class="row"></div></div>
+      </div>
+      <div id="adminPanel" class="panel hidden">
+        <h2>🛠️ 管理员测试面板</h2>
+        <p class="small">仅用于测试角色数据。修改会立即保存到当前浏览器。</p>
+        <label>设置境界</label><select id="adminRank" style="width:100%"></select>
+        <label>修为值</label><input id="adminExp" type="number" min="0">
+        <label>下品灵石</label><input id="adminStones" type="number" min="0">
+        <label>灵气</label><input id="adminQi" type="number" min="0">
+        <div class="row"><button onclick="adminApplyStats()">保存数值</button><button onclick="adminUnlockAll()">解锁全部功法与武器</button><button onclick="adminMaxCharacter()">一键满级测试</button></div>
+        <p id="adminMessage" class="small"></p>
       </div>
       <div class="panel">
         <h2>⚔️ 回合制切磋</h2><p>每次行动后，对手都会作出反应。灵力有限，选择攻击、防御、恢复或功法技能。</p>
@@ -218,6 +230,8 @@
     <script>
     "use strict";
     const STORAGE_KEY="xiuxian_demo_accounts_v2";
+    // 仅供当前前端测试；正式上线前必须改为服务器端验证。
+    const TEST_ADMIN_CODE="XIUXIAN-TEST-2026";
     const ROOTS=[
     {min:1,max:30,name:"五行杂灵根"},{min:31,max:55,name:"四灵根"},
     {min:56,max:75,name:"三灵根"},{min:76,max:88,name:"双灵根"},
@@ -280,7 +294,7 @@
       for(const [key,old] of entries){
       if(!old||typeof old!=="object")continue;
       const a={...old},name=String(a.nickname||a.name||a.username||key||"");if(!name)continue;
-      a.nickname=name;a.password=String(a.password??a.passphrase??"");
+      a.nickname=name;a.password=String(a.password??a.passphrase??"");a.isAdmin=!!a.isAdmin;
       const c=a.character||{},res=a.resources||{},inv=a.inventory||{},techs=a.techniques||{};
       a.root=a.root??a.spiritRoot??c.root??null;
       a.rankIndex=Math.max(0,Math.min(Number(a.rankIndex??c.rankIndex??a.levelIndex)||0,RANKS.length-1));
@@ -368,7 +382,7 @@
     }
 
     function register(){
-    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,confirmPass=document.getElementById("regPassConfirm").value,msg=document.getElementById("regMessage");
+    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,confirmPass=document.getElementById("regPassConfirm").value,sect=document.getElementById("regSect").value.trim(),adminCode=document.getElementById("regAdminCode").value,msg=document.getElementById("regMessage");
     if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return}
     if(pass.length<6){msg.textContent="游戏口令至少需要 6 个字符。";return}
     if(pass!==confirmPass){msg.textContent="两次输入的口令不一致，请检查后重试。";return}
@@ -386,7 +400,8 @@
     equippedWeapon:"木剑",
     materials:["青木灵草","青木灵草","凝露花","凝露花"],
     pills:[],
-    sectId:null,
+    sectId:sect||null,
+    isAdmin:adminCode===TEST_ADMIN_CODE,
     dungeonProgress:{},
     learned:["basic"],
     equipped:"basic",
@@ -402,7 +417,7 @@
     saveAccounts();
     currentName=name;battle=null;expedition=null;
     showPage("game");closeSubpage();renderGame();
-    document.getElementById("cultivateMessage").textContent="创建成功！灵根："+root+"；初始境界：炼气一层。欢迎踏入修仙界！";
+    document.getElementById("cultivateMessage").textContent="创建成功！灵根："+root+"；初始境界：炼气一层。"+(accounts[name].isAdmin?"管理员测试权限已启用。":"欢迎踏入修仙界！");
     }
     function login(){
     const name=document.getElementById("loginName").value.trim(),pass=document.getElementById("loginPass").value,msg=document.getElementById("loginMessage");
@@ -442,6 +457,47 @@
       window.scrollTo({top:0,behavior:"smooth"});
     }
 
+    function editSect(){
+      const p=getPlayer();if(!p)return;
+      const sect=prompt("请输入所属宗门名称（留空表示退出宗门）：",p.sectId||"");
+      if(sect===null)return;
+      p.sectId=sect.trim().slice(0,24)||null;
+      if(!p.isAdmin){
+        const code=prompt("如需开启管理员测试权限，请输入管理员代码；普通玩家直接点取消：");
+        if(code===TEST_ADMIN_CODE)p.isAdmin=true;
+        else if(code!==null&&code!=="")alert("管理员代码不正确，宗门设置仍会保存。");
+      }
+      saveAccounts();renderGame();
+    }
+    function renderAdminPanel(){
+      const p=getPlayer(),sel=document.getElementById("adminRank");if(!p||!p.isAdmin||!sel)return;
+      sel.innerHTML=RANKS.map((r,i)=>'<option value="'+i+'">'+escapeHtml(r)+'</option>').join("");
+      sel.value=String(p.rankIndex);
+      document.getElementById("adminExp").value=p.exp;
+      document.getElementById("adminStones").value=p.stones;
+      document.getElementById("adminQi").value=p.qi||0;
+    }
+    function adminApplyStats(){
+      const p=getPlayer();if(!p||!p.isAdmin)return;
+      p.rankIndex=Math.max(0,Math.min(RANKS.length-1,Number(document.getElementById("adminRank").value)||0));
+      p.exp=Math.max(0,Math.floor(Number(document.getElementById("adminExp").value)||0));
+      p.stones=Math.max(0,Math.floor(Number(document.getElementById("adminStones").value)||0));
+      p.qi=Math.max(0,Math.floor(Number(document.getElementById("adminQi").value)||0));
+      saveAccounts();renderGame();document.getElementById("adminMessage").textContent="角色境界、修为、灵石和灵气已更新。";
+    }
+    function adminUnlockAll(){
+      const p=getPlayer();if(!p||!p.isAdmin)return;
+      p.learned=TECHNIQUES.map(t=>t.id);p.equipped="heaven";
+      p.weapons=WEAPONS.map(w=>w.name);p.equippedWeapon="青锋剑";
+      saveAccounts();renderGame();document.getElementById("adminMessage").textContent="全部功法与武器已解锁，并装备最高阶测试功法和武器。";
+    }
+    function adminMaxCharacter(){
+      const p=getPlayer();if(!p||!p.isAdmin)return;
+      p.rankIndex=RANKS.length-1;p.exp=999999;p.stones=999999;p.qi=999999;
+      p.learned=TECHNIQUES.map(t=>t.id);p.equipped="heaven";p.weapons=WEAPONS.map(w=>w.name);p.equippedWeapon="青锋剑";
+      saveAccounts();renderGame();document.getElementById("adminMessage").textContent="已设置为满级测试角色。";
+    }
+
     function renderGame(){
     const p=getPlayer();if(!p)return;
     document.getElementById("playerTitle").textContent="角色："+p.nickname;
@@ -454,6 +510,8 @@
     document.getElementById("qiText").textContent=Number(p.qi)||0;
     renderInventory(p);
     document.getElementById("sectText").textContent=p.sectId||"暂无宗门";
+    document.getElementById("adminPanel").classList.toggle("hidden",!p.isAdmin);
+    if(p.isAdmin)renderAdminPanel();
     document.getElementById("dungeonText").textContent=Object.keys(p.dungeonProgress||{}).length+" 条记录";
     const nextNeed=breakthroughNeed(p);
     const rootDiscount=Math.round((ROOT_BREAKTHROUGH_DISCOUNTS[p.root]||0)*100);
