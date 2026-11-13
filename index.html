@@ -64,8 +64,8 @@
       <label>游戏口令（至少 6 个字符）</label><div class="password-row"><input id="regPass" type="password" placeholder="仅用于这个游戏"><button type="button" onclick="togglePassword('regPass',this)">显示</button></div>
       <label>再次输入游戏口令</label><div class="password-row"><input id="regPassConfirm" type="password" placeholder="再次输入相同口令"><button type="button" onclick="togglePassword('regPassConfirm',this)">显示</button></div>
       <label>所属宗门（可选）</label><input id="regSect" maxlength="24" placeholder="例如：青云宗；不填则暂未加入宗门">
-      <label>管理员代码（可选，仅测试用）</label><input id="regAdminCode" type="password" placeholder="普通玩家留空">
-      <p class="small">本地测试版，请勿使用真实账号密码。管理员代码仅用于测试，不具备正式安全保护。</p>
+      <p class="small">联网测试版：账号和角色进度保存在云端。请妥善保管密码；当前版本暂不支持自助找回密码。管理员权限将在服务器端安全改造后开放。</p>
+      <p id="cloudStatus" class="small">等待连接云端……</p>
       <div class="row"><button onclick="register()">抽取灵根并创建</button><button onclick="showPage('welcome')">返回</button></div>
       <p id="regMessage"></p>
     </section>
@@ -75,7 +75,7 @@
       <label>角色昵称</label><input id="loginName" maxlength="16" placeholder="输入角色昵称">
       <label>游戏口令</label><div class="password-row"><input id="loginPass" type="password" placeholder="输入游戏口令"><button type="button" onclick="togglePassword('loginPass',this)">显示</button></div>
       <div class="row"><button onclick="login()">登录</button><button onclick="showPage('welcome')">返回</button></div>
-      <p id="loginMessage"></p>
+      <p id="loginMessage"></p><p id="loginCloudStatus" class="small">使用云端账号登录</p>
     </section>
 
     <section id="game" class="hidden">
@@ -225,7 +225,7 @@
       </div>
     </section>
 
-    <footer>《修仙界》本地测试版 · 角色数据保存在当前浏览器</footer>
+    <footer>《修仙界》联网测试版 · 角色进度自动同步至云端</footer>
     </main>
 
     <script>
@@ -259,8 +259,7 @@
     }
     function scheduleCloudSave(){if(!cloudUser||!currentName)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(uploadCurrentSave,900);}
 
-    // 仅供当前前端测试；正式上线前必须改为服务器端验证。
-    const TEST_ADMIN_CODE="XIUXIAN-TEST-2026";
+    // 管理员权限暂时关闭，后续将改为服务器端验证。
     const ROOTS=[
     {min:1,max:30,name:"五行杂灵根"},{min:31,max:55,name:"四灵根"},
     {min:56,max:75,name:"三灵根"},{min:76,max:88,name:"双灵根"},
@@ -458,6 +457,7 @@
           if(profile.error)throw profile.error;
           accounts[name]={nickname:name,root:profile.data.spirit_root||"五行杂灵根",rankIndex:0,exp:0,stones:100,qi:0,weapons:["木剑"],equippedWeapon:"木剑",materials:["青木灵草","青木灵草","凝露花","凝露花"],pills:[],sectId:null,isAdmin:false,dungeonProgress:{},learned:["basic"],equipped:"basic",lastCultivate:"",lastCheckin:"",checkinStreak:0,cultivateDay:"",cultivatesToday:0,extraCultivates:0,battleHistory:[],createdAt:nowText()};
         }
+        if(accounts[name])accounts[name].isAdmin=false;
         currentName=name;battle=null;expedition=null;
         localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
         if(!saved.data)await uploadCurrentSave();
@@ -505,11 +505,7 @@
       const sect=prompt("请输入所属宗门名称（留空表示退出宗门）：",p.sectId||"");
       if(sect===null)return;
       p.sectId=sect.trim().slice(0,24)||null;
-      if(!p.isAdmin){
-        const code=prompt("如需开启管理员测试权限，请输入管理员代码；普通玩家直接点取消：");
-        if(code===TEST_ADMIN_CODE)p.isAdmin=true;
-        else if(code!==null&&code!=="")alert("管理员代码不正确，宗门设置仍会保存。");
-      }
+      if(!p.isAdmin)alert("宗门设置已保存。管理员权限将在服务器端安全验证完成后开放。");
       saveAccounts();renderGame();
     }
     function renderAdminPanel(){
