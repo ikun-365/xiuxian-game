@@ -457,7 +457,6 @@
           if(profile.error)throw profile.error;
           accounts[name]={nickname:name,root:profile.data.spirit_root||"五行杂灵根",rankIndex:0,exp:0,stones:100,qi:0,weapons:["木剑"],equippedWeapon:"木剑",materials:["青木灵草","青木灵草","凝露花","凝露花"],pills:[],sectId:null,isAdmin:false,dungeonProgress:{},learned:["basic"],equipped:"basic",lastCultivate:"",lastCheckin:"",checkinStreak:0,cultivateDay:"",cultivatesToday:0,extraCultivates:0,battleHistory:[],createdAt:nowText()};
         }
-        if(accounts[name])accounts[name].isAdmin=false;
         if(accounts[name]){delete accounts[name].password;accounts[name].isAdmin=false;}
         currentName=name;battle=null;expedition=null;
         localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
