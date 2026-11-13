@@ -396,7 +396,10 @@
     return out;
     }
     let accounts=loadAccounts(),currentName=null,battle=null,expedition=null;
-    function saveAccounts(){localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts))}
+    function saveAccounts(){
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
+      scheduleCloudSave();
+    }
     function getPlayer(name=currentName){return name?accounts[name]:null}
     function equippedTechnique(p){return TECHNIQUES.find(t=>t.id===p.equipped)||TECHNIQUES[0]}
     function showPage(id){["welcome","register","login","game"].forEach(p=>document.getElementById(p).classList.toggle("hidden",p!==id))}
@@ -410,50 +413,61 @@
       button.setAttribute("aria-pressed",String(showing));
     }
 
-    function register(){
-    const name=document.getElementById("regName").value.trim(),pass=document.getElementById("regPass").value,confirmPass=document.getElementById("regPassConfirm").value,sect=document.getElementById("regSect").value.trim(),adminCode=document.getElementById("regAdminCode").value,msg=document.getElementById("regMessage");
-    if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return}
-    if(pass.length<6){msg.textContent="游戏口令至少需要 6 个字符。";return}
-    if(pass!==confirmPass){msg.textContent="两次输入的口令不一致，请检查后重试。";return}
-    if(accounts[name]){msg.textContent="这个昵称已存在，请换一个。";return}
-    const root=getRandomRoot();
-    accounts[name]={
-    nickname:name,
-    password:pass,
-    root,
-    rankIndex:0,
-    exp:0,
-    stones:100,
-    qi:0,
-    weapons:["木剑"],
-    equippedWeapon:"木剑",
-    materials:["青木灵草","青木灵草","凝露花","凝露花"],
-    pills:[],
-    sectId:sect||null,
-    isAdmin:adminCode===TEST_ADMIN_CODE,
-    dungeonProgress:{},
-    learned:["basic"],
-    equipped:"basic",
-    lastCultivate:"",
-    lastCheckin:"",
-    checkinStreak:0,
-    cultivateDay:"",
-    cultivatesToday:0,
-    extraCultivates:0,
-    battleHistory:[],
-    createdAt:nowText()
-    };
-    saveAccounts();
-    currentName=name;battle=null;expedition=null;
-    showPage("game");closeSubpage();renderGame();
-    document.getElementById("cultivateMessage").textContent="创建成功！灵根："+root+"；初始境界：炼气一层。"+(accounts[name].isAdmin?"管理员测试权限已启用。":"欢迎踏入修仙界！");
+    async function register(){
+      const name=document.getElementById("regName").value.trim();
+      const pass=document.getElementById("regPass").value;
+      const confirmPass=document.getElementById("regPassConfirm").value;
+      const sect=document.getElementById("regSect").value.trim();
+      const msg=document.getElementById("regMessage");
+      if(name.length<2||name.length>16){msg.textContent="昵称需要为 2–16 个字符。";return;}
+      if(pass.length<6){msg.textContent="游戏口令至少需要 6 个字符。";return;}
+      if(pass!==confirmPass){msg.textContent="两次输入的口令不一致，请检查后重试。";return;}
+      msg.textContent="正在创建云端账号……";
+      try{
+        const result=await supabaseClient.auth.signUp({email:nicknameEmail(name),password:pass,options:{data:{nickname:name}}});
+        if(result.error)throw result.error;
+        if(!result.data.user)throw new Error("Supabase 没有返回用户信息。");
+        if(!result.data.session){msg.textContent="账号已提交，但项目似乎要求邮箱确认。请检查 Supabase 的 Confirm email 是否关闭。";return;}
+        cloudUser=result.data.user;
+        const old=accounts[name];
+        if(old){old.nickname=name;old.password="";old.isAdmin=false;if(sect)old.sectId=sect.slice(0,24);}
+        else accounts[name]={nickname:name,root:getRandomRoot(),rankIndex:0,exp:0,stones:100,qi:0,weapons:["木剑"],equippedWeapon:"木剑",materials:["青木灵草","青木灵草","凝露花","凝露花"],pills:[],sectId:sect||null,isAdmin:false,dungeonProgress:{},learned:["basic"],equipped:"basic",lastCultivate:"",lastCheckin:"",checkinStreak:0,cultivateDay:"",cultivatesToday:0,extraCultivates:0,battleHistory:[],createdAt:nowText()};
+        currentName=name;battle=null;expedition=null;
+        await uploadCurrentSave();
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
+        showPage("game");closeSubpage();renderGame();
+        document.getElementById("cultivateMessage").textContent="云端账号创建成功！灵根："+accounts[name].root+"；初始境界："+rankName(accounts[name].rankIndex)+"。";
+        msg.textContent="";setCloudStatus("已连接云端，存档已同步");
+      }catch(error){console.error(error);msg.textContent="注册失败："+(error.message||"请稍后重试");}
     }
-    function login(){
-    const name=document.getElementById("loginName").value.trim(),pass=document.getElementById("loginPass").value,msg=document.getElementById("loginMessage");
-    if(!accounts[name]||accounts[name].password!==pass){msg.textContent="昵称或游戏口令不正确。";return}
-    currentName=name;battle=null;showPage("game");closeSubpage();renderGame();
+    async function login(){
+      const name=document.getElementById("loginName").value.trim();
+      const pass=document.getElementById("loginPass").value;
+      const msg=document.getElementById("loginMessage");
+      if(name.length<2||name.length>16){msg.textContent="请输入有效昵称。";return;}
+      msg.textContent="正在登录云端账号……";
+      try{
+        const result=await supabaseClient.auth.signInWithPassword({email:nicknameEmail(name),password:pass});
+        if(result.error)throw result.error;
+        cloudUser=result.data.user;
+        const saved=await supabaseClient.from("game_saves").select("save_data").eq("player_id",cloudUser.id).maybeSingle();
+        if(saved.error)throw saved.error;
+        if(saved.data&&saved.data.save_data){accounts[name]={...saved.data.save_data,nickname:name,password:"",isAdmin:false};}
+        else if(!accounts[name]){
+          const profile=await supabaseClient.from("players").select("nickname,spirit_root").eq("id",cloudUser.id).single();
+          if(profile.error)throw profile.error;
+          accounts[name]={nickname:name,root:profile.data.spirit_root||"五行杂灵根",rankIndex:0,exp:0,stones:100,qi:0,weapons:["木剑"],equippedWeapon:"木剑",materials:["青木灵草","青木灵草","凝露花","凝露花"],pills:[],sectId:null,isAdmin:false,dungeonProgress:{},learned:["basic"],equipped:"basic",lastCultivate:"",lastCheckin:"",checkinStreak:0,cultivateDay:"",cultivatesToday:0,extraCultivates:0,battleHistory:[],createdAt:nowText()};
+        }
+        currentName=name;battle=null;expedition=null;
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
+        if(!saved.data)await uploadCurrentSave();
+        showPage("game");closeSubpage();renderGame();msg.textContent="";setCloudStatus("已连接云端账号");
+      }catch(error){console.error(error);cloudUser=null;msg.textContent="登录失败："+(error.message||"请检查昵称和密码");}
     }
-    function logout(){currentName=null;battle=null;showPage("welcome")}
+        async function logout(){
+      if(cloudSaveTimer){clearTimeout(cloudSaveTimer);cloudSaveTimer=null;await uploadCurrentSave();}
+      await supabaseClient.auth.signOut();cloudUser=null;currentName=null;battle=null;expedition=null;showPage("welcome");
+    }
 
     function deleteAccount(){
       if(!currentName || !accounts[currentName]) return;
