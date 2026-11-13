@@ -46,7 +46,8 @@
     .subpage-head h2{flex:1;margin:8px 0}
     .back-button{background:#465875}
     </style>
-    </head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
     <body>
     <main>
     <h1>☁️ 修仙界</h1>
@@ -230,6 +231,34 @@
     <script>
     "use strict";
     const STORAGE_KEY="xiuxian_demo_accounts_v2";
+    const SUPABASE_URL="https://zftrpyittbakeskrysod.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY="sb_publishable_Pj0ch2mQkd-SS2iJyxktNw_Ou9wPa_u";
+    const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+    let cloudUser=null,cloudSaveTimer=null,cloudSaveBusy=false,cloudSavePending=false;
+    function nicknameEmail(name){
+      const bytes=new TextEncoder().encode(name.trim());
+      let binary="";bytes.forEach(b=>binary+=String.fromCharCode(b));
+      const encoded=btoa(binary).split("+").join("-").split("/").join("_").replace(/=+$/,"");
+      return "u-"+encoded+"@accounts.xiuxian.invalid";
+    }
+    function publicSaveData(player){const copy={...player};delete copy.password;copy.isAdmin=false;return copy;}
+    function setCloudStatus(message){["cloudStatus","loginCloudStatus"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=message;});}
+    async function uploadCurrentSave(){
+      if(!cloudUser||!currentName||!accounts[currentName])return;
+      if(cloudSaveBusy){cloudSavePending=true;return;}
+      cloudSaveBusy=true;
+      try{
+        const p=accounts[currentName];
+        const result=await supabaseClient.from("game_saves").upsert({player_id:cloudUser.id,save_data:publicSaveData(p),updated_at:new Date().toISOString()},{onConflict:"player_id"});
+        if(result.error)throw result.error;
+        const profile=await supabaseClient.from("players").update({realm:rankName(p.rankIndex),spirit_root:p.root||"未觉醒",updated_at:new Date().toISOString()}).eq("id",cloudUser.id);
+        if(profile.error)throw profile.error;
+        setCloudStatus("云存档已同步");
+      }catch(error){console.error(error);setCloudStatus("云存档同步失败："+(error.message||"请检查网络"));}
+      finally{cloudSaveBusy=false;if(cloudSavePending){cloudSavePending=false;uploadCurrentSave();}}
+    }
+    function scheduleCloudSave(){if(!cloudUser||!currentName)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(uploadCurrentSave,900);}
+
     // 仅供当前前端测试；正式上线前必须改为服务器端验证。
     const TEST_ADMIN_CODE="XIUXIAN-TEST-2026";
     const ROOTS=[
