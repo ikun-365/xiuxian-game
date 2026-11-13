@@ -196,7 +196,7 @@
       <!-- 账户管理：放在游戏主页最底部 -->
       <div class="panel" style="text-align:center;margin-top:25px">
         <h3>⚙️ 账户管理</h3>
-        <p class="small">注销账户将永久删除当前浏览器中的角色存档，请谨慎操作。</p>
+        <p class="small">云端账号注销功能尚未开放。请勿将本地缓存清理误认为云端注销。</p>
         <button
           onclick="deleteAccount()"
           style="background:#963e4a;color:white">
@@ -458,6 +458,7 @@
           accounts[name]={nickname:name,root:profile.data.spirit_root||"五行杂灵根",rankIndex:0,exp:0,stones:100,qi:0,weapons:["木剑"],equippedWeapon:"木剑",materials:["青木灵草","青木灵草","凝露花","凝露花"],pills:[],sectId:null,isAdmin:false,dungeonProgress:{},learned:["basic"],equipped:"basic",lastCultivate:"",lastCheckin:"",checkinStreak:0,cultivateDay:"",cultivatesToday:0,extraCultivates:0,battleHistory:[],createdAt:nowText()};
         }
         if(accounts[name])accounts[name].isAdmin=false;
+        if(accounts[name]){delete accounts[name].password;accounts[name].isAdmin=false;}
         currentName=name;battle=null;expedition=null;
         localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));
         if(!saved.data)await uploadCurrentSave();
@@ -470,6 +471,8 @@
     }
 
     function deleteAccount(){
+      alert("云端账号注销功能尚未开放。当前版本不会在此处删除云端账号或云存档。");
+      return;
       if(!currentName || !accounts[currentName]) return;
       const DELETE_LIMIT_KEY="xiuxian_account_delete_day_v1";
       const today=todayKey();
